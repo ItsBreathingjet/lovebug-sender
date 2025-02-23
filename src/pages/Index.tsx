@@ -58,27 +58,33 @@ const Index = () => {
     <div className="w-full min-h-screen flex items-center justify-center p-4 bg-gradient-to-b from-pink-50 to-white">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="relative w-20 h-20 mx-auto mb-4">
+          <div className="relative w-24 h-24 mx-auto mb-4">
+            {/* Ladybug antennae */}
+            <div className="absolute -top-4 left-1/3 w-1 h-4 bg-black rotate-[-20deg] rounded-full" />
+            <div className="absolute -top-4 right-1/3 w-1 h-4 bg-black rotate-[20deg] rounded-full" />
+            
             {/* Ladybug body (red heart) */}
             <HeartPulse className="w-full h-full text-red-500 absolute top-0 left-0" />
-            {/* Ladybug spots (small black hearts) */}
+            
+            {/* Ladybug spots (black dots in a pattern) */}
             <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-black rounded-full" />
             <div className="absolute top-1/4 right-1/4 w-2 h-2 bg-black rounded-full" />
-            <div className="absolute bottom-1/3 left-1/3 w-2 h-2 bg-black rounded-full" />
+            <div className="absolute top-1/2 left-1/3 w-2 h-2 bg-black rounded-full" />
+            <div className="absolute top-1/2 right-1/3 w-2 h-2 bg-black rounded-full" />
+            <div className="absolute bottom-1/3 left-1/4 w-2 h-2 bg-black rounded-full" />
+            <div className="absolute bottom-1/3 right-1/4 w-2 h-2 bg-black rounded-full" />
+            
+            {/* Ladybug head */}
+            <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-4 h-4 bg-black rounded-full" />
           </div>
           <CardTitle className="text-3xl font-semibold text-red-500">Send a LoveBug</CardTitle>
-          <p className="text-muted-foreground mt-2">Brighten their day with an AI-generated message</p>
+          <p className="text-muted-foreground mt-2">Spread some happiness with a cute message!</p>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="p-4 bg-pink-50 rounded-lg">
-            <p className="text-sm text-pink-700">
-              Send a lovely message to make someone's day special! Your LoveBug will deliver it with care.
-            </p>
-          </div>
           <Button 
             onClick={handleSendLoveBug} 
             size="lg" 
-            className="w-full bg-red-500 hover:bg-red-600 transition-colors"
+            className="w-full bg-pink-400 hover:bg-pink-500 transition-all transform hover:scale-105 shadow-lg rounded-full font-semibold text-lg py-6 border-2 border-pink-300"
           >
             <Send className="mr-2 h-5 w-5" />
             Send LoveBug
