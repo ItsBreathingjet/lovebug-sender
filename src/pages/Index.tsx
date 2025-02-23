@@ -21,7 +21,7 @@ const Index = () => {
 
   if (!isLoggedIn) {
     return (
-      <div className="w-full min-h-screen flex items-center justify-center p-4">
+      <div className="w-full min-h-screen flex items-center justify-center p-4 bg-gradient-to-b from-pink-50 to-white">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <HeartPulse className="w-12 h-12 mx-auto mb-4 text-pink-500" />
@@ -55,15 +55,32 @@ const Index = () => {
   }
 
   return (
-    <div className="w-full min-h-screen flex items-center justify-center p-4">
+    <div className="w-full min-h-screen flex items-center justify-center p-4 bg-gradient-to-b from-pink-50 to-white">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-semibold">Send a LoveBug</CardTitle>
-          <p className="text-muted-foreground">Brighten their day with an AI-generated message</p>
+          <div className="relative w-20 h-20 mx-auto mb-4">
+            {/* Ladybug body (red heart) */}
+            <HeartPulse className="w-full h-full text-red-500 absolute top-0 left-0" />
+            {/* Ladybug spots (small black hearts) */}
+            <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-black rounded-full" />
+            <div className="absolute top-1/4 right-1/4 w-2 h-2 bg-black rounded-full" />
+            <div className="absolute bottom-1/3 left-1/3 w-2 h-2 bg-black rounded-full" />
+          </div>
+          <CardTitle className="text-3xl font-semibold text-red-500">Send a LoveBug</CardTitle>
+          <p className="text-muted-foreground mt-2">Brighten their day with an AI-generated message</p>
         </CardHeader>
-        <CardContent className="flex flex-col items-center space-y-4">
-          <Button onClick={handleSendLoveBug} size="lg" className="w-full">
-            <Send className="mr-2 h-4 w-4" />
+        <CardContent className="space-y-6">
+          <div className="p-4 bg-pink-50 rounded-lg">
+            <p className="text-sm text-pink-700">
+              Send a lovely message to make someone's day special! Your LoveBug will deliver it with care.
+            </p>
+          </div>
+          <Button 
+            onClick={handleSendLoveBug} 
+            size="lg" 
+            className="w-full bg-red-500 hover:bg-red-600 transition-colors"
+          >
+            <Send className="mr-2 h-5 w-5" />
             Send LoveBug
           </Button>
         </CardContent>
