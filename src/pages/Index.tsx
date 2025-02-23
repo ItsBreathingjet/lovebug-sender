@@ -19,7 +19,7 @@ const Index = () => {
   const handleSendLoveBug = () => {
     setIsButtonClicked(true);
     console.log("Sending LoveBug message...");
-    setTimeout(() => setIsButtonClicked(false), 500); // Reset animation after it completes
+    setTimeout(() => setIsButtonClicked(false), 500);
   };
 
   if (!isLoggedIn) {
@@ -102,7 +102,7 @@ const Index = () => {
               border-pink-300
               relative
               overflow-hidden
-              ${isButtonClicked ? 'animate-[wiggle_0.5s_ease-in-out]' : ''}
+              ${isButtonClicked ? 'animate-bounce' : ''}
               before:content-['']
               before:absolute
               before:top-0
@@ -117,7 +117,6 @@ const Index = () => {
               active:shadow-inner
             `}
             style={{
-              animation: isButtonClicked ? 'bounce 0.5s cubic-bezier(0.36, 0, 0.66, -0.56) 0s 1 normal none running' : '',
               boxShadow: '0 4px 15px rgba(236, 72, 153, 0.3)',
             }}
           >
@@ -128,17 +127,6 @@ const Index = () => {
           </Button>
         </CardContent>
       </Card>
-      <style jsx>{`
-        @keyframes bounce {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(0.95); }
-        }
-        @keyframes wiggle {
-          0%, 100% { transform: rotate(0deg); }
-          25% { transform: rotate(-3deg); }
-          75% { transform: rotate(3deg); }
-        }
-      `}</style>
     </div>
   );
 };
