@@ -9,6 +9,7 @@ const Index = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isButtonClicked, setIsButtonClicked] = useState(false);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -16,7 +17,9 @@ const Index = () => {
   };
 
   const handleSendLoveBug = () => {
+    setIsButtonClicked(true);
     console.log("Sending LoveBug message...");
+    setTimeout(() => setIsButtonClicked(false), 500); // Reset animation after it completes
   };
 
   if (!isLoggedIn) {
@@ -84,13 +87,58 @@ const Index = () => {
           <Button 
             onClick={handleSendLoveBug} 
             size="lg" 
-            className="w-full bg-pink-400 hover:bg-pink-500 transition-all transform hover:scale-105 shadow-lg rounded-full font-semibold text-lg py-6 border-2 border-pink-300"
+            className={`
+              w-full 
+              bg-gradient-to-r from-pink-400 to-pink-500
+              hover:from-pink-500 hover:to-pink-600
+              transition-all duration-300
+              transform hover:scale-105
+              shadow-lg 
+              rounded-full 
+              font-semibold 
+              text-lg 
+              py-6 
+              border-4 
+              border-pink-300
+              relative
+              overflow-hidden
+              ${isButtonClicked ? 'animate-[wiggle_0.5s_ease-in-out]' : ''}
+              before:content-['']
+              before:absolute
+              before:top-0
+              before:left-0
+              before:w-full
+              before:h-full
+              before:bg-white
+              before:opacity-0
+              before:transition-opacity
+              hover:before:opacity-10
+              active:scale-95
+              active:shadow-inner
+            `}
+            style={{
+              animation: isButtonClicked ? 'bounce 0.5s cubic-bezier(0.36, 0, 0.66, -0.56) 0s 1 normal none running' : '',
+              boxShadow: '0 4px 15px rgba(236, 72, 153, 0.3)',
+            }}
           >
-            <Send className="mr-2 h-5 w-5" />
-            Send LoveBug
+            <div className="relative z-10 flex items-center justify-center">
+              <Send className="mr-2 h-5 w-5 animate-pulse" />
+              Send LoveBug
+            </div>
           </Button>
         </CardContent>
       </Card>
+      <style jsx>{`
+        @keyframes bounce {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(0.95); }
+        }
+        @keyframes wiggle {
+          0%, 100% { transform: rotate(0deg); }
+          25% { transform: rotate(-3deg); }
+          75% { transform: rotate(3deg); }
+        }
+      `}</style>
     </div>
   );
 };
