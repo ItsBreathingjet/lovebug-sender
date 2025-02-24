@@ -1,9 +1,50 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { HeartPulse, Send, Heart, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+
+// Move these components outside of the main component to prevent re-renders
+const FloatingHearts = () => (
+  <div className="absolute inset-0 pointer-events-none overflow-hidden">
+    {[...Array(12)].map((_, i) => (
+      <Heart
+        key={i}
+        className={`absolute animate-float text-pink-${300 + (i % 3) * 100} opacity-50`}
+        style={{
+          left: `${Math.random() * 100}%`,
+          top: `${Math.random() * 100}%`,
+          animation: `float ${5 + Math.random() * 5}s infinite`,
+          animationDelay: `${Math.random() * 5}s`,
+          transform: `scale(${0.5 + Math.random() * 1})`,
+        }}
+      />
+    ))}
+  </div>
+);
+
+const DecorationSparkles = () => (
+  <>
+    <Sparkles className="absolute top-10 left-10 text-pink-400 animate-pulse" />
+    <Sparkles className="absolute bottom-10 right-10 text-pink-400 animate-pulse" />
+    <Sparkles className="absolute top-10 right-10 text-pink-400 animate-pulse" />
+    <Sparkles className="absolute bottom-10 left-10 text-pink-400 animate-pulse" />
+  </>
+);
+
+const PageWrapper = ({ children }: { children: React.ReactNode }) => (
+  <div className="relative w-full min-h-screen flex items-center justify-center p-4 overflow-hidden">
+    <div className="absolute inset-0 bg-gradient-to-b from-pink-100 via-white to-pink-50" />
+    <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(255,182,255,0.1),rgba(255,182,255,0))]" />
+    <FloatingHearts />
+    <DecorationSparkles />
+    <div className="relative z-10">
+      {children}
+    </div>
+  </div>
+);
 
 const Index = () => {
   const [email, setEmail] = useState("");
@@ -30,45 +71,6 @@ const Index = () => {
     
     setTimeout(() => setIsButtonClicked(false), 500);
   };
-
-  const FloatingHearts = () => (
-    <div className="absolute inset-0 pointer-events-none overflow-hidden">
-      {[...Array(12)].map((_, i) => (
-        <Heart
-          key={i}
-          className={`absolute animate-float text-pink-${300 + (i % 3) * 100} opacity-50`}
-          style={{
-            left: `${Math.random() * 100}%`,
-            top: `${Math.random() * 100}%`,
-            animation: `float ${5 + Math.random() * 5}s infinite`,
-            animationDelay: `${Math.random() * 5}s`,
-            transform: `scale(${0.5 + Math.random() * 1})`,
-          }}
-        />
-      ))}
-    </div>
-  );
-
-  const DecorationSparkles = () => (
-    <>
-      <Sparkles className="absolute top-10 left-10 text-pink-400 animate-pulse" />
-      <Sparkles className="absolute bottom-10 right-10 text-pink-400 animate-pulse" />
-      <Sparkles className="absolute top-10 right-10 text-pink-400 animate-pulse" />
-      <Sparkles className="absolute bottom-10 left-10 text-pink-400 animate-pulse" />
-    </>
-  );
-
-  const PageWrapper = ({ children }: { children: React.ReactNode }) => (
-    <div className="relative w-full min-h-screen flex items-center justify-center p-4 overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-b from-pink-100 via-white to-pink-50" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(255,182,255,0.1),rgba(255,182,255,0))]" />
-      <FloatingHearts />
-      <DecorationSparkles />
-      <div className="relative z-10">
-        {children}
-      </div>
-    </div>
-  );
 
   if (!isLoggedIn) {
     return (
