@@ -4,12 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { HeartPulse, Send } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isButtonClicked, setIsButtonClicked] = useState(false);
+  const { toast } = useToast();
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,6 +21,15 @@ const Index = () => {
   const handleSendLoveBug = () => {
     setIsButtonClicked(true);
     console.log("Sending LoveBug message...");
+    
+    // Show toast notification with cute message
+    toast({
+      title: "LoveBug Sent! 💝",
+      description: "Your message of love is flying through the digital skies! 🐞✨",
+      className: "bg-gradient-to-r from-pink-500 to-rose-500 text-white border-none",
+      duration: 3000,
+    });
+    
     setTimeout(() => setIsButtonClicked(false), 500);
   };
 
@@ -132,3 +143,4 @@ const Index = () => {
 };
 
 export default Index;
+
