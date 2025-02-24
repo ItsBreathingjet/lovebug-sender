@@ -1,69 +1,36 @@
-# Welcome to your Lovable project
+Welcome to LoveBug! :A mobile app that allows long-distance couples to send AI-generated affectionate messages as a simple way to stay connected.
 
-## Project info
+1. Core Features & Functionalities
+==================================
+User Features:
+User Authentication (Sign Up, Login, Logout)
+Email/password-based authentication (Firebase Authentication) (not yet setup)
+Sending a "LoveBug"
+One-tap "Send LoveBug" button
+AI-generated message using OpenAI API (GPT-based) (not yet implemented)
+Push notification to the recipient (not yet working)
 
-**URL**: https://lovable.dev/projects/ca5694f2-ec42-49dc-8087-6e50e641e010
+2. Tech Stack
+   ============================================
+   1. React Native
+   2. Vite
+   3. Typescript
+   4. CSS
+      
+3. AI Involvement
+   ================================
+  Loveable AI- This was used to see all the interfaces you see when running the app. The entire creative aspect of the app was created via LoveableAI
+  ChatGPT- I used ChatGPT when taking the app from loveable to github and then into my VSCode as it assisted me with what the necessary things I needed installed on VSCode along with setting up the environment and the steps in which to get there.
 
-## How can I edit this code?
 
-There are several ways of editing your application.
+4. INSTRUCTIONS ON HOW TO RUN!! (VERRYYYY IMPORTANTTTTTT)
+   -------------------------------------------------------
+   -------------------------------------------------------
+   As of right now the app can only be ran via localhost on the web as the transition to setting up a mobile emulator is still in the works. In order to run the app in Localhost please run the following commands in your VSCode/IDE Terminal
 
-**Use Lovable**
+   1. npm install
+   2. npm run dev
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/ca5694f2-ec42-49dc-8087-6e50e641e010) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with .
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/ca5694f2-ec42-49dc-8087-6e50e641e010) and click on Share -> Publish.
-
-## I want to use a custom domain - is that possible?
-
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+   After those are ran the terminal should provide prompting on how to access the app via a localhost link which you can click on or copy and a network one. (USE LOCALHOST)
+   
+5. YOU'RE DONE! 
