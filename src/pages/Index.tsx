@@ -1,29 +1,44 @@
-
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { HeartPulse, Send, Heart, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
+// Generate static heart positions and animations
+const generateHeartProps = () => {
+  return [...Array(12)].map(() => ({
+    left: `${Math.random() * 100}%`,
+    top: `${Math.random() * 100}%`,
+    duration: 5 + Math.random() * 5,
+    delay: Math.random() * 5,
+    scale: 0.5 + Math.random() * 1,
+  }));
+};
+
 // Move these components outside of the main component to prevent re-renders
-const FloatingHearts = () => (
-  <div className="absolute inset-0 pointer-events-none overflow-hidden">
-    {[...Array(12)].map((_, i) => (
-      <Heart
-        key={i}
-        className={`absolute animate-float text-pink-${300 + (i % 3) * 100} opacity-50`}
-        style={{
-          left: `${Math.random() * 100}%`,
-          top: `${Math.random() * 100}%`,
-          animation: `float ${5 + Math.random() * 5}s infinite`,
-          animationDelay: `${Math.random() * 5}s`,
-          transform: `scale(${0.5 + Math.random() * 1})`,
-        }}
-      />
-    ))}
-  </div>
-);
+const FloatingHearts = () => {
+  // Use useMemo to keep the same random values between renders
+  const heartProps = useMemo(() => generateHeartProps(), []);
+  
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-hidden">
+      {heartProps.map((props, i) => (
+        <Heart
+          key={i}
+          className={`absolute animate-float text-pink-${300 + (i % 3) * 100} opacity-50`}
+          style={{
+            left: props.left,
+            top: props.top,
+            animation: `float ${props.duration}s infinite`,
+            animationDelay: `${props.delay}s`,
+            transform: `scale(${props.scale})`,
+          }}
+        />
+      ))}
+    </div>
+  );
+};
 
 const DecorationSparkles = () => (
   <>
