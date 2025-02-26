@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, User } from "lucide-react";
@@ -84,7 +84,7 @@ export const ContactsList = ({ onSelectContact }: ContactsListProps) => {
     });
   };
 
-  useState(() => {
+  useEffect(() => {
     loadContacts();
   }, []);
 
