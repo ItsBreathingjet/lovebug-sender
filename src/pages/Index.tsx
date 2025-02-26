@@ -4,8 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { HeartPulse, Send, Heart, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
-// Generate static heart positions and animations
 const generateHeartProps = () => {
   return [...Array(12)].map(() => ({
     left: `${Math.random() * 100}%`,
@@ -16,9 +16,7 @@ const generateHeartProps = () => {
   }));
 };
 
-// Move these components outside of the main component to prevent re-renders
 const FloatingHearts = () => {
-  // Use useMemo to keep the same random values between renders
   const heartProps = useMemo(() => generateHeartProps(), []);
   
   return (
@@ -64,8 +62,10 @@ const PageWrapper = ({ children }: { children: React.ReactNode }) => (
 const Index = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isButtonClicked, setIsButtonClicked] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const { toast } = useToast();
 
   const handleLogin = (e: React.FormEvent) => {
@@ -73,18 +73,49 @@ const Index = () => {
     setIsLoggedIn(true);
   };
 
-  const handleSendLoveBug = () => {
+  const handleSendLoveBug = async () => {
+    if (!phoneNumber) {
+      toast({
+        title: "Phone number required",
+        description: "Please enter a phone number to send your LoveBug!",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsButtonClicked(true);
-    console.log("Sending LoveBug message...");
-    
-    toast({
-      title: "LoveBug Sent! 💝",
-      description: "Your message of love is flying through the digital skies! 🐞✨",
-      className: "bg-gradient-to-r from-pink-500 to-rose-500 text-white border-none",
-      duration: 3000,
-    });
-    
-    setTimeout(() => setIsButtonClicked(false), 500);
+    setIsSending(true);
+
+    try {
+      const { data: generatedData, error: generationError } = await supabase.functions.invoke('generate-lovebug');
+      
+      if (generationError) throw generationError;
+
+      const message = generatedData.message;
+
+      const { error: dbError } = await supabase
+        .from('messages')
+        .insert([{ phone_number: phoneNumber, message }]);
+
+      if (dbError) throw dbError;
+
+      toast({
+        title: "LoveBug Sent! 💝",
+        description: "Your AI-generated message of love is flying through the digital skies! 🐞✨",
+        className: "bg-gradient-to-r from-pink-500 to-rose-500 text-white border-none",
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('Error sending LoveBug:', error);
+      toast({
+        title: "Error sending LoveBug",
+        description: "Something went wrong. Please try again!",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSending(false);
+      setIsButtonClicked(false);
+    }
   };
 
   if (!isLoggedIn) {
@@ -142,12 +173,20 @@ const Index = () => {
             <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-4 h-4 bg-black rounded-full" />
           </div>
           <CardTitle className="text-3xl font-semibold text-red-500">Send a LoveBug</CardTitle>
-          <p className="text-muted-foreground mt-2">Spread some happiness with a cute message!</p>
+          <p className="text-muted-foreground mt-2">Spread some AI-generated love to your special someone!</p>
         </CardHeader>
         <CardContent className="space-y-6">
+          <Input
+            type="tel"
+            placeholder="Enter phone number"
+            value={phoneNumber}
+            onChange={(e) => setPhoneNumber(e.target.value)}
+            className="text-center text-lg"
+          />
           <Button 
             onClick={handleSendLoveBug} 
-            size="lg" 
+            size="lg"
+            disabled={isSending}
             className={`
               w-full 
               bg-gradient-to-r from-pink-400 to-pink-500
@@ -176,14 +215,16 @@ const Index = () => {
               hover:before:opacity-10
               active:scale-95
               active:shadow-inner
+              disabled:opacity-50
+              disabled:cursor-not-allowed
             `}
             style={{
               boxShadow: '0 4px 15px rgba(236, 72, 153, 0.3)',
             }}
           >
             <div className="relative z-10 flex items-center justify-center">
-              <Send className="mr-2 h-5 w-5 animate-pulse" />
-              Send LoveBug
+              <Send className={`mr-2 h-5 w-5 ${isSending ? 'animate-spin' : 'animate-pulse'}`} />
+              {isSending ? 'Sending...' : 'Send LoveBug'}
             </div>
           </Button>
         </CardContent>
