@@ -1,3 +1,4 @@
+
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -60,18 +61,10 @@ const PageWrapper = ({ children }: { children: React.ReactNode }) => (
 );
 
 const Index = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isButtonClicked, setIsButtonClicked] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const { toast } = useToast();
-
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoggedIn(true);
-  };
 
   const handleSendLoveBug = async () => {
     if (!phoneNumber) {
@@ -105,6 +98,9 @@ const Index = () => {
         className: "bg-gradient-to-r from-pink-500 to-rose-500 text-white border-none",
         duration: 3000,
       });
+      
+      // Clear the phone number after successful send
+      setPhoneNumber("");
     } catch (error) {
       console.error('Error sending LoveBug:', error);
       toast({
@@ -117,41 +113,6 @@ const Index = () => {
       setIsButtonClicked(false);
     }
   };
-
-  if (!isLoggedIn) {
-    return (
-      <PageWrapper>
-        <Card className="w-full max-w-md transform transition-all duration-300 hover:shadow-lg">
-          <CardHeader className="text-center">
-            <HeartPulse className="w-12 h-12 mx-auto mb-4 text-pink-500" />
-            <CardTitle className="text-2xl font-semibold">LoveBug</CardTitle>
-            <p className="text-muted-foreground">Stay connected with your loved one</p>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
-              <Input
-                type="email"
-                placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-              <Input
-                type="password"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-              <Button type="submit" className="w-full">
-                Sign In
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      </PageWrapper>
-    );
-  }
 
   return (
     <PageWrapper>
