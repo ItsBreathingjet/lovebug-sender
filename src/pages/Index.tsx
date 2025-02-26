@@ -1,62 +1,26 @@
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { HeartPulse, Send, Heart, Sparkles } from "lucide-react";
+import { HeartPulse, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { PageWrapper } from "@/components/lovebug/PageWrapper";
+import { ContactsList } from "@/components/lovebug/ContactsList";
 
-const generateHeartProps = () => {
-  return [...Array(12)].map(() => ({
-    left: `${Math.random() * 100}%`,
-    top: `${Math.random() * 100}%`,
-    duration: 5 + Math.random() * 5,
-    delay: Math.random() * 5,
-    scale: 0.5 + Math.random() * 1,
-  }));
-};
-
-const FloatingHearts = () => {
-  const heartProps = useMemo(() => generateHeartProps(), []);
-  
-  return (
-    <div className="absolute inset-0 pointer-events-none overflow-hidden">
-      {heartProps.map((props, i) => (
-        <Heart
-          key={i}
-          className={`absolute animate-float text-pink-${300 + (i % 3) * 100} opacity-50`}
-          style={{
-            left: props.left,
-            top: props.top,
-            animation: `float ${props.duration}s infinite`,
-            animationDelay: `${props.delay}s`,
-            transform: `scale(${props.scale})`,
-          }}
-        />
-      ))}
-    </div>
-  );
-};
-
-const DecorationSparkles = () => (
-  <>
-    <Sparkles className="absolute top-10 left-10 text-pink-400 animate-pulse" />
-    <Sparkles className="absolute bottom-10 right-10 text-pink-400 animate-pulse" />
-    <Sparkles className="absolute top-10 right-10 text-pink-400 animate-pulse" />
-    <Sparkles className="absolute bottom-10 left-10 text-pink-400 animate-pulse" />
-  </>
-);
-
-const PageWrapper = ({ children }: { children: React.ReactNode }) => (
-  <div className="relative w-full min-h-screen flex items-center justify-center p-4 overflow-hidden">
-    <div className="absolute inset-0 bg-gradient-to-b from-pink-100 via-white to-pink-50" />
-    <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(255,182,255,0.1),rgba(255,182,255,0))]" />
-    <FloatingHearts />
-    <DecorationSparkles />
-    <div className="relative z-10">
-      {children}
-    </div>
+const LoveBugLogo = () => (
+  <div className="relative w-24 h-24 mx-auto mb-4">
+    <div className="absolute -top-4 left-1/3 w-1 h-4 bg-black rotate-[-20deg] rounded-full" />
+    <div className="absolute -top-4 right-1/3 w-1 h-4 bg-black rotate-[20deg] rounded-full" />
+    <HeartPulse className="w-full h-full text-red-500 absolute top-0 left-0" />
+    <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-black rounded-full" />
+    <div className="absolute top-1/4 right-1/4 w-2 h-2 bg-black rounded-full" />
+    <div className="absolute top-1/2 left-1/3 w-2 h-2 bg-black rounded-full" />
+    <div className="absolute top-1/2 right-1/3 w-2 h-2 bg-black rounded-full" />
+    <div className="absolute bottom-1/3 left-1/4 w-2 h-2 bg-black rounded-full" />
+    <div className="absolute bottom-1/3 right-1/4 w-2 h-2 bg-black rounded-full" />
+    <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-4 h-4 bg-black rounded-full" />
   </div>
 );
 
@@ -90,6 +54,12 @@ const Index = () => {
         .from('messages')
         .insert([{ phone_number: phoneNumber, message }]);
 
+      // Update last_used timestamp for the contact if it exists
+      await supabase
+        .from('contacts')
+        .update({ last_used: new Date().toISOString() })
+        .eq('phone_number', phoneNumber);
+
       if (dbError) throw dbError;
 
       toast({
@@ -99,7 +69,6 @@ const Index = () => {
         duration: 3000,
       });
       
-      // Clear the phone number after successful send
       setPhoneNumber("");
     } catch (error) {
       console.error('Error sending LoveBug:', error);
@@ -118,21 +87,7 @@ const Index = () => {
     <PageWrapper>
       <Card className="w-full max-w-md transform transition-all duration-300 hover:shadow-lg">
         <CardHeader className="text-center">
-          <div className="relative w-24 h-24 mx-auto mb-4">
-            <div className="absolute -top-4 left-1/3 w-1 h-4 bg-black rotate-[-20deg] rounded-full" />
-            <div className="absolute -top-4 right-1/3 w-1 h-4 bg-black rotate-[20deg] rounded-full" />
-            
-            <HeartPulse className="w-full h-full text-red-500 absolute top-0 left-0" />
-            
-            <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-black rounded-full" />
-            <div className="absolute top-1/4 right-1/4 w-2 h-2 bg-black rounded-full" />
-            <div className="absolute top-1/2 left-1/3 w-2 h-2 bg-black rounded-full" />
-            <div className="absolute top-1/2 right-1/3 w-2 h-2 bg-black rounded-full" />
-            <div className="absolute bottom-1/3 left-1/4 w-2 h-2 bg-black rounded-full" />
-            <div className="absolute bottom-1/3 right-1/4 w-2 h-2 bg-black rounded-full" />
-            
-            <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-4 h-4 bg-black rounded-full" />
-          </div>
+          <LoveBugLogo />
           <CardTitle className="text-3xl font-semibold text-red-500">Send a LoveBug</CardTitle>
           <p className="text-muted-foreground mt-2">Spread some AI-generated love to your special someone!</p>
         </CardHeader>
@@ -188,6 +143,9 @@ const Index = () => {
               {isSending ? 'Sending...' : 'Send LoveBug'}
             </div>
           </Button>
+          <ContactsList 
+            onSelectContact={(contact) => setPhoneNumber(contact.phone_number)} 
+          />
         </CardContent>
       </Card>
     </PageWrapper>
