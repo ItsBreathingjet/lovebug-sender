@@ -1,13 +1,13 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { HeartPulse, Send } from "lucide-react";
+import { HeartPulse, Send, Bell } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { PageWrapper } from "@/components/lovebug/PageWrapper";
 import { ContactsList } from "@/components/lovebug/ContactsList";
+import { usePushNotifications } from "@/hooks/use-push-notifications";
 
 const LoveBugLogo = () => (
   <div className="relative w-24 h-24 mx-auto mb-4">
@@ -29,6 +29,21 @@ const Index = () => {
   const [isButtonClicked, setIsButtonClicked] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const { toast } = useToast();
+  const { permission, requestPermission, subscribe } = usePushNotifications();
+
+  const handleEnableNotifications = async () => {
+    const newPermission = await requestPermission();
+    if (newPermission === 'granted') {
+      const subscription = await subscribe();
+      if (subscription) {
+        toast({
+          title: "Notifications enabled! 🔔",
+          description: "You'll receive notifications when your LoveBugs are sent!",
+          className: "bg-gradient-to-r from-pink-500 to-rose-500 text-white border-none",
+        });
+      }
+    }
+  };
 
   const handleSendLoveBug = async () => {
     if (!phoneNumber) {
@@ -90,6 +105,17 @@ const Index = () => {
           <LoveBugLogo />
           <CardTitle className="text-3xl font-semibold text-red-500">Send a LoveBug</CardTitle>
           <p className="text-muted-foreground mt-2">Spread some AI-generated love to your special someone!</p>
+          {permission !== 'granted' && (
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleEnableNotifications}
+              className="mt-4"
+            >
+              <Bell className="w-4 h-4 mr-2" />
+              Enable Notifications
+            </Button>
+          )}
         </CardHeader>
         <CardContent className="space-y-6">
           <Input
@@ -119,20 +145,6 @@ const Index = () => {
               relative
               overflow-hidden
               ${isButtonClicked ? 'animate-bounce' : ''}
-              before:content-['']
-              before:absolute
-              before:top-0
-              before:left-0
-              before:w-full
-              before:h-full
-              before:bg-white
-              before:opacity-0
-              before:transition-opacity
-              hover:before:opacity-10
-              active:scale-95
-              active:shadow-inner
-              disabled:opacity-50
-              disabled:cursor-not-allowed
             `}
             style={{
               boxShadow: '0 4px 15px rgba(236, 72, 153, 0.3)',
