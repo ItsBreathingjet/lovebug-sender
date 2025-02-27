@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { PageWrapper } from "@/components/lovebug/PageWrapper";
 import { ContactsList } from "@/components/lovebug/ContactsList";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
+import { Capacitor } from "@capacitor/core";
 
 const LoveBugLogo = () => (
   <div className="relative w-24 h-24 mx-auto mb-4">
@@ -29,8 +30,13 @@ const Index = () => {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [isButtonClicked, setIsButtonClicked] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [isNative, setIsNative] = useState(false);
   const { toast } = useToast();
   const { permission, requestPermission, subscribe, sendNotification } = usePushNotifications();
+
+  useEffect(() => {
+    setIsNative(Capacitor.isNativePlatform());
+  }, []);
 
   const handleEnableNotifications = async () => {
     const newPermission = await requestPermission();
@@ -133,7 +139,7 @@ const Index = () => {
               className="mt-4"
             >
               <Bell className="w-4 h-4 mr-2" />
-              Enable Notifications
+              Enable {isNative ? 'Native' : 'Web'} Notifications
             </Button>
           )}
         </CardHeader>

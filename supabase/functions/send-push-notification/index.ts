@@ -7,7 +7,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface PushSubscription {
+interface WebPushSubscription {
   endpoint: string;
   expirationTime: number | null;
   keys: {
@@ -16,9 +16,15 @@ interface PushSubscription {
   };
 }
 
+interface NativeToken {
+  token: string;
+  platform: 'ios' | 'android';
+}
+
 interface RequestBody {
-  subscription: PushSubscription;
+  subscription: WebPushSubscription | NativeToken;
   message: string;
+  platform?: 'web' | 'ios' | 'android';
 }
 
 serve(async (req) => {
@@ -35,38 +41,94 @@ serve(async (req) => {
 
     // For POST requests, handle the push notification
     if (req.method === 'POST') {
-      const { subscription, message } = await req.json() as RequestBody;
+      const { subscription, message, platform = 'web' } = await req.json() as RequestBody;
       
       console.log('Received push notification request:');
       console.log('Subscription:', subscription);
       console.log('Message:', message);
+      console.log('Platform:', platform);
 
-      // Here we would use the Web Push library to send the notification
-      // For now, we'll just save the subscription to the database
-      
-      const { data, error } = await supabase
-        .from('push_subscriptions')
-        .upsert({ 
-          endpoint: subscription.endpoint,
-          subscription_data: subscription 
-        })
-        .select();
+      // Save the subscription based on platform type
+      if (platform === 'web') {
+        const webSubscription = subscription as WebPushSubscription;
+        const { data, error } = await supabase
+          .from('push_subscriptions')
+          .upsert({ 
+            endpoint: webSubscription.endpoint,
+            subscription_data: webSubscription,
+            platform: 'web'
+          })
+          .select();
 
-      if (error) {
-        console.error('Error saving subscription:', error);
-        return new Response(
-          JSON.stringify({ error: 'Failed to save subscription' }),
-          { 
-            status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          }
-        );
+        if (error) {
+          console.error('Error saving web subscription:', error);
+          return new Response(
+            JSON.stringify({ error: 'Failed to save web subscription' }),
+            { 
+              status: 500,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            }
+          );
+        }
+        
+        console.log('Web subscription saved successfully:', data);
+      } else {
+        // Handle native device token
+        const nativeToken = subscription as NativeToken;
+        const { data, error } = await supabase
+          .from('push_subscriptions')
+          .upsert({ 
+            endpoint: nativeToken.token,
+            subscription_data: nativeToken,
+            platform: nativeToken.platform
+          })
+          .select();
+
+        if (error) {
+          console.error('Error saving native token:', error);
+          return new Response(
+            JSON.stringify({ error: 'Failed to save native token' }),
+            { 
+              status: 500,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            }
+          );
+        }
+        
+        console.log('Native token saved successfully:', data);
+        
+        // In a production environment, you would send the notification to FCM or APNS here
+        // Example for Firebase Cloud Messaging (FCM):
+        // This part is commented out because it requires actual Firebase credentials
+        /*
+        if (nativeToken.platform === 'android') {
+          // Android FCM notification
+          const fcmResponse = await fetch('https://fcm.googleapis.com/fcm/send', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `key=${Deno.env.get('FCM_SERVER_KEY')}`
+            },
+            body: JSON.stringify({
+              to: nativeToken.token,
+              notification: {
+                title: 'LoveBug',
+                body: message,
+                sound: 'default'
+              }
+            })
+          });
+          
+          console.log('FCM response:', await fcmResponse.json());
+        } else if (nativeToken.platform === 'ios') {
+          // iOS APNS notification would be implemented here
+          // This requires a more complex setup with Apple's push notification service
+        }
+        */
       }
-
-      console.log('Subscription saved successfully:', data);
       
-      // In a production app, we would send the actual push notification here
-      // using the web-push library, but for now we'll just return a success response
+      // For now, we'll just return a success response
+      // In a production environment, you'd actually send the notification
       
       return new Response(
         JSON.stringify({ 
