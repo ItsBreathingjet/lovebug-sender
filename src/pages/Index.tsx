@@ -52,6 +52,25 @@ const Index = () => {
     }
   };
 
+  const sendSMS = async (phoneNumber: string, message: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('send-sms', {
+        body: { phoneNumber, message }
+      });
+      
+      if (error) {
+        console.error('Error sending SMS via Twilio:', error);
+        return false;
+      }
+      
+      console.log('SMS sent successfully:', data);
+      return true;
+    } catch (error) {
+      console.error('Exception sending SMS:', error);
+      return false;
+    }
+  };
+
   const handleSendLoveBug = async () => {
     if (!phoneNumber) {
       toast({
@@ -96,6 +115,17 @@ const Index = () => {
         .eq('phone_number', phoneNumber);
 
       if (dbError) throw dbError;
+
+      // Send the SMS via Twilio
+      const smsSent = await sendSMS(phoneNumber, message);
+      
+      if (!smsSent) {
+        toast({
+          title: "SMS Delivery Issue",
+          description: "Message saved but SMS delivery failed. Check server logs.",
+          variant: "destructive",
+        });
+      }
 
       // Send a push notification if enabled
       if (permission === 'granted') {
