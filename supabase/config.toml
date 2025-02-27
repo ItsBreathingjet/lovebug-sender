@@ -1,1 +1,8 @@
+
 project_id = "nvptlivnsclbinfaifoc"
+
+[functions.generate-lovebug]
+verify_jwt = false
+
+[functions.send-push-notification]
+verify_jwt = false

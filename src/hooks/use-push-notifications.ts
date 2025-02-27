@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from "@/integrations/supabase/client";
 
 export function usePushNotifications() {
   const [permission, setPermission] = useState<NotificationPermission>('default');
@@ -52,6 +53,12 @@ export function usePushNotifications() {
       });
 
       setSubscription(newSubscription);
+      
+      // Save subscription to our backend
+      await supabase.functions.invoke('send-push-notification', {
+        body: { subscription: newSubscription }
+      });
+      
       return newSubscription;
     } catch (error) {
       console.error('Error subscribing to push notifications:', error);
@@ -59,16 +66,44 @@ export function usePushNotifications() {
     }
   };
 
+  const sendNotification = async (message: string) => {
+    if (!subscription) return false;
+
+    try {
+      const response = await supabase.functions.invoke('send-push-notification', {
+        body: { subscription, message }
+      });
+      
+      return response.data?.success || false;
+    } catch (error) {
+      console.error('Error sending push notification:', error);
+      return false;
+    }
+  };
+
   useEffect(() => {
     if ('Notification' in window) {
       setPermission(Notification.permission);
+
+      if (permission === 'granted') {
+        registerServiceWorker().then(registration => {
+          if (registration) {
+            registration.pushManager.getSubscription().then(existingSubscription => {
+              if (existingSubscription) {
+                setSubscription(existingSubscription);
+              }
+            });
+          }
+        });
+      }
     }
-  }, []);
+  }, [permission]);
 
   return {
     permission,
     subscription,
     requestPermission: requestNotificationPermission,
-    subscribe: subscribeToNotifications
+    subscribe: subscribeToNotifications,
+    sendNotification
   };
 }

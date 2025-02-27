@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,7 +30,7 @@ const Index = () => {
   const [isButtonClicked, setIsButtonClicked] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const { toast } = useToast();
-  const { permission, requestPermission, subscribe } = usePushNotifications();
+  const { permission, requestPermission, subscribe, sendNotification } = usePushNotifications();
 
   const handleEnableNotifications = async () => {
     const newPermission = await requestPermission();
@@ -59,7 +60,20 @@ const Index = () => {
     setIsSending(true);
 
     try {
-      const { data: generatedData, error: generationError } = await supabase.functions.invoke('generate-lovebug');
+      // Get contact name if available
+      const { data: contactData } = await supabase
+        .from('contacts')
+        .select('name')
+        .eq('phone_number', phoneNumber)
+        .single();
+      
+      // Generate personalized message with the contact's name
+      const { data: generatedData, error: generationError } = await supabase.functions.invoke(
+        'generate-lovebug', 
+        { 
+          body: { phoneNumber } 
+        }
+      );
       
       if (generationError) throw generationError;
 
@@ -76,6 +90,12 @@ const Index = () => {
         .eq('phone_number', phoneNumber);
 
       if (dbError) throw dbError;
+
+      // Send a push notification if enabled
+      if (permission === 'granted') {
+        const contactName = contactData?.name || 'Someone';
+        await sendNotification(`LoveBug sent to ${contactName}! 💌`);
+      }
 
       toast({
         title: "LoveBug Sent! 💝",
