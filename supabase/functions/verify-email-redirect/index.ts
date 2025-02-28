@@ -17,8 +17,10 @@ serve(async (req) => {
     const url = new URL(req.url);
     const token = url.searchParams.get('token');
     const type = url.searchParams.get('type');
-    const redirectTo = url.searchParams.get('redirect_to') || '/';
-
+    
+    // Get the redirect URL from the query params or use a default
+    const redirectUrl = url.searchParams.get('redirect_to') || new URL(req.headers.get('origin') || '').origin;
+    
     if (!token || !type) {
       return new Response(
         JSON.stringify({ 
@@ -37,9 +39,12 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Handle the verification based on the type
-    if (type === 'signup') {
-      // Redirect to the app with token and type for client-side verification
-      const clientRedirectUrl = `${redirectTo}?verification=true&token=${token}&type=${type}`;
+    if (type === 'signup' || type === 'email') {
+      // Construct the client redirect URL with verification params
+      const clientRedirectUrl = `${redirectUrl}?verification=true&token=${token}&type=${type}`;
+      
+      console.log("Redirecting to:", clientRedirectUrl);
+      
       return new Response(null, {
         status: 302,
         headers: {

@@ -11,24 +11,48 @@ export const useEmailVerification = () => {
 
   useEffect(() => {
     const handleEmailVerification = async () => {
+      // Check for email confirmation token in URL
+      // Supabase adds these params when redirecting from email verification
       const searchParams = new URLSearchParams(location.search);
-      const isVerification = searchParams.get('verification') === 'true';
-      const token = searchParams.get('token');
+      
+      // Case 1: Handle redirect from email verification link
+      const token_hash = searchParams.get('token_hash');
       const type = searchParams.get('type');
+      
+      // Case 2: Handle redirect from our custom verification endpoint
+      const isVerification = searchParams.get('verification') === 'true';
+      const token = searchParams.get('token') || token_hash;
 
-      if (isVerification && token && type) {
+      // Handle email verification if applicable tokens are present
+      if ((token_hash && type === 'email') || (isVerification && token && type)) {
         try {
-          // Clear URL params first to prevent reprocessing on page refresh
+          // Clear URL params to prevent reprocessing on refresh
           window.history.replaceState({}, document.title, window.location.pathname);
           
-          // Attempt to verify with the token
-          const { data, error } = await supabase.auth.verifyOtp({
-            token,
-            type: 'signup',
-            email: ''  // Adding the required email property, though the token will override it
-          });
-
+          console.log("Attempting to verify with token:", token, "type:", type);
+          
+          // Use the appropriate verification method based on token type
+          let verifyResult;
+          
+          if (token_hash && type === 'email') {
+            // This is Supabase's default email verification flow
+            verifyResult = await supabase.auth.verifyOtp({
+              token_hash,
+              type: 'email',
+            });
+          } else {
+            // This is our custom verification flow
+            verifyResult = await supabase.auth.verifyOtp({
+              token: token || '',
+              type: 'signup',
+              email: '' // Required by type but token contains the email
+            });
+          }
+          
+          const { data, error } = verifyResult;
+          
           if (error) {
+            console.error('Verification error:', error);
             toast({
               title: 'Verification failed',
               description: error.message,
@@ -37,6 +61,7 @@ export const useEmailVerification = () => {
             // Redirect to auth page if verification fails
             navigate('/auth');
           } else {
+            console.log('Verification successful:', data);
             toast({
               title: 'Verification successful',
               description: 'Your account has been verified. Welcome to LoveBug!',
@@ -60,5 +85,5 @@ export const useEmailVerification = () => {
     };
 
     handleEmailVerification();
-  }, [location]);
+  }, [location, navigate, toast]);
 };
