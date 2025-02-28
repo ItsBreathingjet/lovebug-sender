@@ -1,14 +1,13 @@
 
-import { useContext } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useContext, memo } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { AuthContext } from "@/App";
 import { HeartPulse, Users, LogOut } from "lucide-react";
 
-export const Navbar = () => {
+export const Navbar = memo(() => {
   const { user, profile, signOut } = useContext(AuthContext);
-  const navigate = useNavigate();
   const { toast } = useToast();
 
   const handleSignOut = async () => {
@@ -68,4 +67,4 @@ export const Navbar = () => {
       </div>
     </nav>
   );
-};
+});
