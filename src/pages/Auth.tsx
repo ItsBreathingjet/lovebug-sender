@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -33,6 +33,15 @@ const Auth = () => {
   const [showVerification, setShowVerification] = useState(false);
   const [pendingEmail, setPendingEmail] = useState("");
   const { toast } = useToast();
+
+  // Check if there's a stored pending verification from a previous signup
+  useEffect(() => {
+    const storedEmail = localStorage.getItem("pendingVerification");
+    if (storedEmail) {
+      setPendingEmail(storedEmail);
+      setShowVerification(true);
+    }
+  }, []);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,6 +79,8 @@ const Auth = () => {
         });
       } else {
         setPendingEmail(email);
+        // Store pending verification in localStorage to persist through page refreshes
+        localStorage.setItem("pendingVerification", email);
         setShowVerification(true);
         toast({
           title: "Verification email sent",
@@ -107,6 +118,8 @@ const Auth = () => {
           variant: "destructive",
         });
       } else {
+        // Clear the pending verification from localStorage
+        localStorage.removeItem("pendingVerification");
         toast({
           title: "Verification successful",
           description: "Your account has been verified. Welcome to LoveBug!",
@@ -148,11 +161,29 @@ const Auth = () => {
       });
 
       if (error) {
-        toast({
-          title: "Sign in failed",
-          description: error.message,
-          variant: "destructive",
-        });
+        if (error.message.includes("Email not confirmed")) {
+          // If email not confirmed, switch to verification mode
+          setPendingEmail(email);
+          localStorage.setItem("pendingVerification", email);
+          setShowVerification(true);
+          toast({
+            title: "Email not verified",
+            description: "Please verify your email first. We'll send you a new verification code.",
+            variant: "destructive",
+          });
+          
+          // Resend verification email
+          await supabase.auth.resend({
+            email,
+            type: 'signup',
+          });
+        } else {
+          toast({
+            title: "Sign in failed",
+            description: error.message,
+            variant: "destructive",
+          });
+        }
       } else {
         toast({
           title: "Sign in successful",
@@ -250,7 +281,10 @@ const Auth = () => {
               <Button
                 type="button"
                 variant="link"
-                onClick={() => setShowVerification(false)}
+                onClick={() => {
+                  setShowVerification(false);
+                  // Don't clear the localStorage item to ensure the user can come back to verification
+                }}
                 className="mt-2"
               >
                 Back to Login
