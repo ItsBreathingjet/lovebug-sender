@@ -3,7 +3,7 @@ import { useState, useEffect, useContext } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { HeartPulse, Send, Bell } from "lucide-react";
+import { HeartPulse, Send, Bell, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { PageWrapper } from "@/components/lovebug/PageWrapper";
@@ -30,7 +30,7 @@ const LoveBugLogo = () => (
 interface Connection {
   id: string;
   connected_user_id: string;
-  profiles: {
+  profile?: {
     id: string;
     username: string;
     display_name: string;
@@ -57,22 +57,46 @@ const Index = () => {
 
   const fetchConnections = async () => {
     try {
-      const { data, error } = await supabase
+      // First get the connections
+      const { data: connectionsData, error: connectionsError } = await supabase
         .from("connections")
-        .select(`
-          id,
-          connected_user_id,
-          profiles:connected_user_id(id, username, display_name)
-        `)
+        .select("*")
         .eq("user_id", user.id)
         .eq("status", "accepted");
 
-      if (error) throw error;
-      setConnections(data || []);
+      if (connectionsError) throw connectionsError;
+      
+      // Then fetch profile data for each connection
+      const connectionsWithProfiles = await Promise.all((connectionsData || []).map(async (connection) => {
+        const { data: profileData, error: profileError } = await supabase
+          .from("profiles")
+          .select("id, username, display_name")
+          .eq("id", connection.connected_user_id)
+          .single();
+          
+        if (profileError) {
+          console.error("Error fetching profile:", profileError);
+          return {
+            ...connection,
+            profile: {
+              id: connection.connected_user_id,
+              username: "Unknown",
+              display_name: "Unknown User"
+            }
+          };
+        }
+        
+        return {
+          ...connection,
+          profile: profileData
+        };
+      }));
+
+      setConnections(connectionsWithProfiles);
       
       // If there are connections, select the first one by default
-      if (data && data.length > 0) {
-        setSelectedConnection(data[0].connected_user_id);
+      if (connectionsWithProfiles.length > 0) {
+        setSelectedConnection(connectionsWithProfiles[0].connected_user_id);
       }
     } catch (error) {
       console.error("Error fetching connections:", error);
@@ -126,7 +150,7 @@ const Index = () => {
 
       // Find the selected connection's display name
       const selectedUser = connections.find(c => c.connected_user_id === selectedConnection);
-      const recipientName = selectedUser?.profiles.display_name || 'your connection';
+      const recipientName = selectedUser?.profile?.display_name || 'your connection';
 
       // Save the message in the database
       const { error: dbError } = await supabase
@@ -161,29 +185,6 @@ const Index = () => {
     } finally {
       setIsSending(false);
       setIsButtonClicked(false);
-    }
-  };
-
-  const getReceivedLoveBugs = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('messages')
-        .select(`
-          id, 
-          message, 
-          created_at,
-          profiles:sender_id(username, display_name)
-        `)
-        .eq('recipient_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(5);
-        
-      if (error) throw error;
-      
-      return data || [];
-    } catch (error) {
-      console.error('Error fetching received LoveBugs:', error);
-      return [];
     }
   };
 
@@ -239,7 +240,7 @@ const Index = () => {
                             key={connection.connected_user_id} 
                             value={connection.connected_user_id}
                           >
-                            {connection.profiles.display_name || connection.profiles.username}
+                            {connection.profile?.display_name || connection.profile?.username}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -302,20 +303,52 @@ const ReceivedLoveBugs = ({ userId }: { userId: string }) => {
   const fetchReceivedLoveBugs = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      // First get the messages
+      const { data: messagesData, error: messagesError } = await supabase
         .from('messages')
-        .select(`
-          id, 
-          message, 
-          created_at,
-          profiles:sender_id(username, display_name)
-        `)
+        .select("id, message, created_at, sender_id")
         .eq('recipient_id', userId)
         .order('created_at', { ascending: false })
         .limit(5);
         
-      if (error) throw error;
-      setReceivedLoveBugs(data || []);
+      if (messagesError) throw messagesError;
+      
+      // Then get the profile information for each sender
+      const messagesWithProfiles = await Promise.all((messagesData || []).map(async (message) => {
+        if (!message.sender_id) {
+          return {
+            ...message,
+            profiles: {
+              username: "Anonymous",
+              display_name: "Anonymous"
+            }
+          };
+        }
+        
+        const { data: profileData, error: profileError } = await supabase
+          .from("profiles")
+          .select("username, display_name")
+          .eq("id", message.sender_id)
+          .single();
+          
+        if (profileError) {
+          console.error("Error fetching profile:", profileError);
+          return {
+            ...message,
+            profiles: {
+              username: "Unknown",
+              display_name: "Unknown User"
+            }
+          };
+        }
+        
+        return {
+          ...message,
+          profiles: profileData
+        };
+      }));
+      
+      setReceivedLoveBugs(messagesWithProfiles);
     } catch (error) {
       console.error('Error fetching received LoveBugs:', error);
     } finally {

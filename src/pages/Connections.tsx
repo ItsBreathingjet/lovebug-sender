@@ -17,7 +17,12 @@ interface Connection {
   connected_user_id: string;
   status: string;
   created_at: string;
-  profiles: {
+  connected_profile?: {
+    username: string;
+    display_name: string;
+    avatar_url: string | null;
+  };
+  requester_profile?: {
     username: string;
     display_name: string;
     avatar_url: string | null;
@@ -49,21 +54,42 @@ const Connections = () => {
 
   const fetchConnections = async () => {
     try {
-      const { data, error } = await supabase
+      // First, get all the connections
+      const { data: connectionsData, error: connectionsError } = await supabase
         .from("connections")
-        .select(`
-          id,
-          user_id,
-          connected_user_id,
-          status,
-          created_at,
-          profiles:connected_user_id(username, display_name, avatar_url)
-        `)
+        .select("*")
         .eq("user_id", user.id)
         .eq("status", "accepted");
 
-      if (error) throw error;
-      setConnections(data || []);
+      if (connectionsError) throw connectionsError;
+      
+      // Then fetch profile data for each connection
+      const connectionsWithProfiles = await Promise.all((connectionsData || []).map(async (connection) => {
+        const { data: profileData, error: profileError } = await supabase
+          .from("profiles")
+          .select("username, display_name, avatar_url")
+          .eq("id", connection.connected_user_id)
+          .single();
+          
+        if (profileError) {
+          console.error("Error fetching profile:", profileError);
+          return {
+            ...connection,
+            connected_profile: {
+              username: "Unknown",
+              display_name: "Unknown User",
+              avatar_url: null
+            }
+          };
+        }
+        
+        return {
+          ...connection,
+          connected_profile: profileData
+        };
+      }));
+
+      setConnections(connectionsWithProfiles);
     } catch (error) {
       console.error("Error fetching connections:", error);
       toast({
@@ -78,21 +104,42 @@ const Connections = () => {
 
   const fetchPendingRequests = async () => {
     try {
-      const { data, error } = await supabase
+      // First, get all pending requests
+      const { data: requestsData, error: requestsError } = await supabase
         .from("connections")
-        .select(`
-          id,
-          user_id,
-          connected_user_id,
-          status,
-          created_at,
-          profiles:user_id(username, display_name, avatar_url)
-        `)
+        .select("*")
         .eq("connected_user_id", user.id)
         .eq("status", "pending");
 
-      if (error) throw error;
-      setPendingRequests(data || []);
+      if (requestsError) throw requestsError;
+      
+      // Then fetch profile data for each requester
+      const requestsWithProfiles = await Promise.all((requestsData || []).map(async (request) => {
+        const { data: profileData, error: profileError } = await supabase
+          .from("profiles")
+          .select("username, display_name, avatar_url")
+          .eq("id", request.user_id)
+          .single();
+          
+        if (profileError) {
+          console.error("Error fetching profile:", profileError);
+          return {
+            ...request,
+            requester_profile: {
+              username: "Unknown",
+              display_name: "Unknown User",
+              avatar_url: null
+            }
+          };
+        }
+        
+        return {
+          ...request,
+          requester_profile: profileData
+        };
+      }));
+
+      setPendingRequests(requestsWithProfiles);
     } catch (error) {
       console.error("Error fetching pending requests:", error);
     }
@@ -271,8 +318,8 @@ const Connections = () => {
                       className="flex items-center justify-between p-4 border rounded-md"
                     >
                       <div>
-                        <p className="font-medium">{connection.profiles.display_name}</p>
-                        <p className="text-sm text-muted-foreground">@{connection.profiles.username}</p>
+                        <p className="font-medium">{connection.connected_profile?.display_name}</p>
+                        <p className="text-sm text-muted-foreground">@{connection.connected_profile?.username}</p>
                       </div>
                       <Link to="/">
                         <Button
@@ -301,8 +348,8 @@ const Connections = () => {
                       className="flex items-center justify-between p-4 border rounded-md"
                     >
                       <div>
-                        <p className="font-medium">{request.profiles.display_name}</p>
-                        <p className="text-sm text-muted-foreground">@{request.profiles.username}</p>
+                        <p className="font-medium">{request.requester_profile?.display_name}</p>
+                        <p className="text-sm text-muted-foreground">@{request.requester_profile?.username}</p>
                       </div>
                       <div className="flex gap-2">
                         <Button
