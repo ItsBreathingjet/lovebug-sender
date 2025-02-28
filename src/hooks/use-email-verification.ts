@@ -25,6 +25,7 @@ export const useEmailVerification = () => {
           const { data, error } = await supabase.auth.verifyOtp({
             token,
             type: 'signup',
+            email: ''  // Adding the required email property, though the token will override it
           });
 
           if (error) {
