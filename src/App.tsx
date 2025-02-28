@@ -3,10 +3,11 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { createContext } from "react";
+import { useEmailVerification } from "@/hooks/use-email-verification";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Connections from "./pages/Connections";
@@ -25,6 +26,28 @@ export const AuthContext = createContext<{
 });
 
 const queryClient = new QueryClient();
+
+// We need to use a wrapper for routes to use hooks
+const AppRoutes = () => {
+  useEmailVerification();
+  const { user } = useContext(AuthContext);
+  
+  return (
+    <Routes>
+      <Route path="/auth" element={
+        !user ? <Auth /> : <Navigate to="/" replace />
+      } />
+      <Route path="/" element={
+        user ? <Index /> : <Navigate to="/auth" replace />
+      } />
+      <Route path="/connections" element={
+        user ? <Connections /> : <Navigate to="/auth" replace />
+      } />
+      {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+};
 
 const App = () => {
   const [session, setSession] = useState<any>(null);
@@ -81,19 +104,7 @@ const App = () => {
           <Toaster />
           <Sonner />
           <BrowserRouter>
-            <Routes>
-              <Route path="/auth" element={
-                !user ? <Auth /> : <Navigate to="/" replace />
-              } />
-              <Route path="/" element={
-                user ? <Index /> : <Navigate to="/auth" replace />
-              } />
-              <Route path="/connections" element={
-                user ? <Connections /> : <Navigate to="/auth" replace />
-              } />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            <AppRoutes />
           </BrowserRouter>
         </TooltipProvider>
       </AuthContext.Provider>
