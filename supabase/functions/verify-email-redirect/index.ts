@@ -14,14 +14,17 @@ serve(async (req) => {
   }
 
   try {
+    console.log("Email verification request received");
+    
     const url = new URL(req.url);
     const token = url.searchParams.get('token');
     const type = url.searchParams.get('type');
+    const redirectTo = url.searchParams.get('redirect_to');
     
-    // Get the redirect URL from the query params or use a default
-    const redirectUrl = url.searchParams.get('redirect_to') || new URL(req.headers.get('origin') || '').origin;
+    console.log("Parameters:", { token, type, redirectTo });
     
     if (!token || !type) {
+      console.error("Missing token or type");
       return new Response(
         JSON.stringify({ 
           error: "Missing token or verification type"
@@ -33,37 +36,41 @@ serve(async (req) => {
       );
     }
 
-    // Create Supabase client with Deno server environment variables
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Handle the verification based on the type
-    if (type === 'signup' || type === 'email') {
-      // Construct the client redirect URL with verification params
-      const clientRedirectUrl = `${redirectUrl}?verification=true&token=${token}&type=${type}`;
-      
-      console.log("Redirecting to:", clientRedirectUrl);
-      
-      return new Response(null, {
-        status: 302,
-        headers: {
-          ...corsHeaders,
-          'Location': clientRedirectUrl
-        }
-      });
-    } else {
-      // For other types (password reset, etc.), use similar logic
-      return new Response(
-        JSON.stringify({ 
-          error: "Unsupported verification type"
-        }),
-        { 
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
+    // Get the origin or use a default
+    let origin = '';
+    
+    try {
+      if (redirectTo) {
+        origin = new URL(redirectTo).origin;
+      } else if (req.headers.get('origin')) {
+        origin = req.headers.get('origin') || '';
+      } else if (req.headers.get('referer')) {
+        origin = new URL(req.headers.get('referer') || '').origin;
+      }
+    } catch (error) {
+      console.error("Error parsing origin:", error);
     }
+    
+    // Default to the Supabase project URL if no origin could be determined
+    if (!origin) {
+      const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+      origin = supabaseUrl.replace('.supabase.co', '.vercel.app');
+    }
+    
+    console.log("Using origin:", origin);
+
+    // Construct the redirect URL with the verification token
+    const clientRedirectUrl = `${origin}/auth?verification=true&token=${encodeURIComponent(token)}&type=${encodeURIComponent(type)}`;
+    
+    console.log("Redirecting to:", clientRedirectUrl);
+    
+    return new Response(null, {
+      status: 302,
+      headers: {
+        ...corsHeaders,
+        'Location': clientRedirectUrl
+      }
+    });
   } catch (error) {
     console.error('Error in verify-email-redirect function:', error);
     

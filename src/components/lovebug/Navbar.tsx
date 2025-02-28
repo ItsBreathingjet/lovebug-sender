@@ -13,12 +13,16 @@ export const Navbar = () => {
 
   const handleSignOut = async () => {
     try {
+      console.log("Signing out...");
       await signOut();
+      
+      // Force a page refresh to ensure all state is cleared
+      window.location.href = "/auth";
+      
       toast({
         title: "Signed out",
         description: "You have been signed out successfully",
       });
-      navigate("/auth");
     } catch (error) {
       console.error("Error during sign out:", error);
       toast({
