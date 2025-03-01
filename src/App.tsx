@@ -65,26 +65,36 @@ const App = () => {
 
   useEffect(() => {
     // Fetch the current session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfile(session.user.id);
-      } else {
-        setLoading(false);
+    const fetchInitialSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        if (session?.user) {
+          await fetchProfile(session.user.id);
+        } else {
+          setLoading(false); // Make sure to set loading to false if no user
+        }
+      } catch (error) {
+        console.error("Error fetching session:", error);
+        setLoading(false); // Make sure to set loading to false on error
       }
-    });
+    };
+
+    fetchInitialSession();
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
+        
         if (session?.user) {
           await fetchProfile(session.user.id);
         } else {
           setProfile(null);
-          setLoading(false);
+          setLoading(false); // Make sure to set loading to false if no user
         }
       }
     );
@@ -105,10 +115,10 @@ const App = () => {
       } else if (error) {
         console.error("Error fetching profile:", error);
       }
-      setLoading(false);
+      setLoading(false); // Always set loading to false when done
     } catch (err) {
       console.error("Unexpected error fetching profile:", err);
-      setLoading(false);
+      setLoading(false); // Always set loading to false on error
     }
   };
 
