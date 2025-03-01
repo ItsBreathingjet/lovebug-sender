@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useContext, useCallback, memo } from "react";
+import { useState, useEffect, useContext } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -12,7 +12,7 @@ import { AuthContext } from "@/App";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
 import { Capacitor } from "@capacitor/core";
 
-const LoveBugLogo = memo(() => (
+const LoveBugLogo = () => (
   <div className="relative w-24 h-24 mx-auto mb-4">
     <div className="absolute -top-4 left-1/3 w-1 h-4 bg-black rotate-[-20deg] rounded-full" />
     <div className="absolute -top-4 right-1/3 w-1 h-4 bg-black rotate-[20deg] rounded-full" />
@@ -25,7 +25,7 @@ const LoveBugLogo = memo(() => (
     <div className="absolute bottom-1/3 right-1/4 w-2 h-2 bg-black rounded-full" />
     <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-4 h-4 bg-black rounded-full" />
   </div>
-));
+);
 
 interface Connection {
   id: string;
@@ -44,7 +44,6 @@ const Index = () => {
   const [isButtonClicked, setIsButtonClicked] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isNative, setIsNative] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const { permission, requestPermission, subscribe, sendNotification } = usePushNotifications();
 
@@ -56,33 +55,48 @@ const Index = () => {
     }
   }, [user]);
 
-  const fetchConnections = useCallback(async () => {
-    setIsLoading(true);
+  const fetchConnections = async () => {
     try {
-      // Fixed query by using proper JOIN syntax
-      const { data, error } = await supabase
+      // First get the connections
+      const { data: connectionsData, error: connectionsError } = await supabase
         .from("connections")
-        .select(`
-          id,
-          connected_user_id,
-          profile:profiles!connected_user_id(id, username, display_name)
-        `)
+        .select("*")
         .eq("user_id", user.id)
         .eq("status", "accepted");
 
-      if (error) throw error;
+      if (connectionsError) throw connectionsError;
       
-      const formattedConnections = data?.map(item => ({
-        id: item.id,
-        connected_user_id: item.connected_user_id,
-        profile: item.profile
-      })) || [];
+      // Then fetch profile data for each connection
+      const connectionsWithProfiles = await Promise.all((connectionsData || []).map(async (connection) => {
+        const { data: profileData, error: profileError } = await supabase
+          .from("profiles")
+          .select("id, username, display_name")
+          .eq("id", connection.connected_user_id)
+          .single();
+          
+        if (profileError) {
+          console.error("Error fetching profile:", profileError);
+          return {
+            ...connection,
+            profile: {
+              id: connection.connected_user_id,
+              username: "Unknown",
+              display_name: "Unknown User"
+            }
+          };
+        }
+        
+        return {
+          ...connection,
+          profile: profileData
+        };
+      }));
 
-      setConnections(formattedConnections);
+      setConnections(connectionsWithProfiles);
       
       // If there are connections, select the first one by default
-      if (formattedConnections.length > 0) {
-        setSelectedConnection(formattedConnections[0].connected_user_id);
+      if (connectionsWithProfiles.length > 0) {
+        setSelectedConnection(connectionsWithProfiles[0].connected_user_id);
       }
     } catch (error) {
       console.error("Error fetching connections:", error);
@@ -91,10 +105,8 @@ const Index = () => {
         description: "Failed to load connections",
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
-  }, [user, toast]);
+  };
 
   const handleEnableNotifications = async () => {
     const newPermission = await requestPermission();
@@ -110,7 +122,7 @@ const Index = () => {
     }
   };
 
-  const handleSendLoveBug = useCallback(async () => {
+  const handleSendLoveBug = async () => {
     if (!selectedConnection) {
       toast({
         title: "Select a connection",
@@ -174,7 +186,7 @@ const Index = () => {
       setIsSending(false);
       setIsButtonClicked(false);
     }
-  }, [selectedConnection, connections, user, permission, sendNotification, toast]);
+  };
 
   return (
     <>
@@ -199,11 +211,7 @@ const Index = () => {
               )}
             </CardHeader>
             <CardContent className="space-y-6">
-              {isLoading ? (
-                <div className="flex justify-center py-4">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div>
-                </div>
-              ) : connections.length === 0 ? (
+              {connections.length === 0 ? (
                 <div className="text-center py-4">
                   <p className="text-muted-foreground mb-4">You don't have any connections yet!</p>
                   <Button 
@@ -222,7 +230,6 @@ const Index = () => {
                     <Select 
                       value={selectedConnection} 
                       onValueChange={setSelectedConnection}
-                      disabled={isLoading}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select a connection" />
@@ -282,8 +289,8 @@ const Index = () => {
   );
 };
 
-// Fix the ReceivedLoveBugs component to use correct JOIN syntax as well
-const ReceivedLoveBugs = memo(({ userId }: { userId: string }) => {
+// Component for received LoveBugs
+const ReceivedLoveBugs = ({ userId }: { userId: string }) => {
   const [receivedLoveBugs, setReceivedLoveBugs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -296,23 +303,52 @@ const ReceivedLoveBugs = memo(({ userId }: { userId: string }) => {
   const fetchReceivedLoveBugs = async () => {
     setLoading(true);
     try {
-      // Fixed JOIN query
-      const { data, error } = await supabase
+      // First get the messages
+      const { data: messagesData, error: messagesError } = await supabase
         .from('messages')
-        .select(`
-          id, 
-          message, 
-          created_at, 
-          sender_id,
-          profiles:profiles!sender_id(username, display_name)
-        `)
+        .select("id, message, created_at, sender_id")
         .eq('recipient_id', userId)
         .order('created_at', { ascending: false })
         .limit(5);
         
-      if (error) throw error;
+      if (messagesError) throw messagesError;
       
-      setReceivedLoveBugs(data || []);
+      // Then get the profile information for each sender
+      const messagesWithProfiles = await Promise.all((messagesData || []).map(async (message) => {
+        if (!message.sender_id) {
+          return {
+            ...message,
+            profiles: {
+              username: "Anonymous",
+              display_name: "Anonymous"
+            }
+          };
+        }
+        
+        const { data: profileData, error: profileError } = await supabase
+          .from("profiles")
+          .select("username, display_name")
+          .eq("id", message.sender_id)
+          .single();
+          
+        if (profileError) {
+          console.error("Error fetching profile:", profileError);
+          return {
+            ...message,
+            profiles: {
+              username: "Unknown",
+              display_name: "Unknown User"
+            }
+          };
+        }
+        
+        return {
+          ...message,
+          profiles: profileData
+        };
+      }));
+      
+      setReceivedLoveBugs(messagesWithProfiles);
     } catch (error) {
       console.error('Error fetching received LoveBugs:', error);
     } finally {
@@ -359,6 +395,6 @@ const ReceivedLoveBugs = memo(({ userId }: { userId: string }) => {
       </CardContent>
     </Card>
   );
-});
+};
 
 export default Index;

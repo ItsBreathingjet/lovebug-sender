@@ -18,13 +18,11 @@ export const AuthContext = createContext<{
   user: any;
   profile: any;
   loading: boolean;
-  signOut: () => Promise<void>;
 }>({
   session: null,
   user: null,
   profile: null,
   loading: true,
-  signOut: async () => {},
 });
 
 const queryClient = new QueryClient();
@@ -32,15 +30,7 @@ const queryClient = new QueryClient();
 // We need to use a wrapper for routes to use hooks
 const AppRoutes = () => {
   useEmailVerification();
-  const { user, loading } = useContext(AuthContext);
-  const location = useLocation();
-  
-  // If still loading, show nothing (or could add a loading spinner)
-  if (loading) {
-    return <div className="flex items-center justify-center h-screen">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500"></div>
-    </div>;
-  }
+  const { user } = useContext(AuthContext);
   
   return (
     <Routes>
@@ -80,7 +70,6 @@ const App = () => {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
-        console.log("Auth state changed:", _event, session?.user?.id);
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
@@ -96,39 +85,21 @@ const App = () => {
   }, []);
 
   const fetchProfile = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-      
-      if (!error && data) {
-        setProfile(data);
-      } else {
-        console.error("Error fetching profile:", error);
-      }
-    } catch (error) {
-      console.error("Error in fetchProfile:", error);
-    } finally {
-      setLoading(false);
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+    
+    if (!error && data) {
+      setProfile(data);
     }
-  };
-
-  const signOut = async () => {
-    try {
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        console.error("Error signing out:", error);
-      }
-    } catch (error) {
-      console.error("Exception during sign out:", error);
-    }
+    setLoading(false);
   };
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthContext.Provider value={{ session, user, profile, loading, signOut }}>
+      <AuthContext.Provider value={{ session, user, profile, loading }}>
         <TooltipProvider>
           <Toaster />
           <Sonner />

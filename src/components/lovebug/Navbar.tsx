@@ -1,34 +1,32 @@
 
-import { useContext, memo } from "react";
-import { Link } from "react-router-dom";
+import { useContext } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { AuthContext } from "@/App";
+import { supabase } from "@/integrations/supabase/client";
 import { HeartPulse, Users, LogOut } from "lucide-react";
 
-export const Navbar = memo(() => {
-  const { user, profile, signOut } = useContext(AuthContext);
+export const Navbar = () => {
+  const { user, profile } = useContext(AuthContext);
+  const navigate = useNavigate();
   const { toast } = useToast();
 
   const handleSignOut = async () => {
-    try {
-      console.log("Signing out...");
-      await signOut();
-      
-      // Force a page refresh to ensure all state is cleared
-      window.location.href = "/auth";
-      
+    const { error } = await supabase.auth.signOut();
+    
+    if (error) {
+      toast({
+        title: "Error signing out",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
       toast({
         title: "Signed out",
         description: "You have been signed out successfully",
       });
-    } catch (error) {
-      console.error("Error during sign out:", error);
-      toast({
-        title: "Error signing out",
-        description: "An error occurred while signing out",
-        variant: "destructive",
-      });
+      navigate("/auth");
     }
   };
 
@@ -67,4 +65,4 @@ export const Navbar = memo(() => {
       </div>
     </nav>
   );
-});
+};

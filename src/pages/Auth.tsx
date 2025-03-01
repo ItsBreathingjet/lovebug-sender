@@ -1,12 +1,12 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { HeartPulse, Mail } from "lucide-react";
+import { HeartPulse } from "lucide-react";
 
 const LoveBugLogo = () => (
   <div className="relative w-24 h-24 mx-auto mb-4">
@@ -32,17 +32,7 @@ const Auth = () => {
   const [verificationCode, setVerificationCode] = useState("");
   const [showVerification, setShowVerification] = useState(false);
   const [pendingEmail, setPendingEmail] = useState("");
-  const [verificationMethod, setVerificationMethod] = useState<"email" | "manual">("email");
   const { toast } = useToast();
-
-  // Check if there's a stored pending verification from a previous signup
-  useEffect(() => {
-    const storedEmail = localStorage.getItem("pendingVerification");
-    if (storedEmail) {
-      setPendingEmail(storedEmail);
-      setShowVerification(true);
-    }
-  }, []);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,8 +50,6 @@ const Auth = () => {
     }
 
     try {
-      // For development purposes, we'll disable email confirmation
-      // by directly creating the user and signing them in
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -70,7 +58,6 @@ const Auth = () => {
             username,
             display_name: displayName || username,
           },
-          // For development only - disable auto confirmation
           emailRedirectTo: window.location.origin,
         },
       });
@@ -82,22 +69,11 @@ const Auth = () => {
           variant: "destructive",
         });
       } else {
-        console.log("Sign-up response:", data);
-        
-        // For development, let's go straight to verification
         setPendingEmail(email);
-        localStorage.setItem("pendingVerification", email);
         setShowVerification(true);
-        
-        // Immediately try to resend the verification email
-        await supabase.auth.resend({
-          email,
-          type: 'signup',
-        });
-        
         toast({
-          title: "Account created!",
-          description: "For development, we're taking you to verification directly.",
+          title: "Verification email sent",
+          description: "Please check your email for a verification code.",
           className: "bg-gradient-to-r from-pink-400 to-pink-500 text-white border-none",
         });
       }
@@ -118,55 +94,26 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      if (verificationMethod === "manual") {
-        // For development purposes, we'll skip the verification and simulate success
-        // In production, this should use the actual verification process
-        localStorage.removeItem("pendingVerification");
-        toast({
-          title: "Development mode",
-          description: "Verification skipped for development purposes.",
-          className: "bg-gradient-to-r from-green-400 to-green-500 text-white border-none",
-        });
-        
-        // Log the user in directly
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: pendingEmail,
-          password, // Note: In development mode, user needs to enter password again
-        });
-        
-        if (error) {
-          toast({
-            title: "Sign in failed",
-            description: error.message,
-            variant: "destructive",
-          });
-        } else {
-          setShowVerification(false);
-        }
-      } else {
-        // Use the normal OTP verification in production
-        const { data, error } = await supabase.auth.verifyOtp({
-          email: pendingEmail,
-          token: verificationCode,
-          type: 'signup',
-        });
+      const { data, error } = await supabase.auth.verifyOtp({
+        email: pendingEmail,
+        token: verificationCode,
+        type: 'signup',
+      });
 
-        if (error) {
-          toast({
-            title: "Verification failed",
-            description: error.message,
-            variant: "destructive",
-          });
-        } else {
-          // Clear the pending verification from localStorage
-          localStorage.removeItem("pendingVerification");
-          toast({
-            title: "Verification successful",
-            description: "Your account has been verified. Welcome to LoveBug!",
-            className: "bg-gradient-to-r from-pink-400 to-pink-500 text-white border-none",
-          });
-          setShowVerification(false);
-        }
+      if (error) {
+        toast({
+          title: "Verification failed",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Verification successful",
+          description: "Your account has been verified. Welcome to LoveBug!",
+          className: "bg-gradient-to-r from-pink-400 to-pink-500 text-white border-none",
+        });
+        setShowVerification(false);
+        // Verification successful - user is now signed in
       }
     } catch (error) {
       toast({
@@ -201,29 +148,11 @@ const Auth = () => {
       });
 
       if (error) {
-        if (error.message.includes("Email not confirmed")) {
-          // If email not confirmed, switch to verification mode
-          setPendingEmail(email);
-          localStorage.setItem("pendingVerification", email);
-          setShowVerification(true);
-          toast({
-            title: "Email not verified",
-            description: "Please verify your email first. We'll send you a new verification code.",
-            variant: "destructive",
-          });
-          
-          // Resend verification email
-          await supabase.auth.resend({
-            email,
-            type: 'signup',
-          });
-        } else {
-          toast({
-            title: "Sign in failed",
-            description: error.message,
-            variant: "destructive",
-          });
-        }
+        toast({
+          title: "Sign in failed",
+          description: error.message,
+          variant: "destructive",
+        });
       } else {
         toast({
           title: "Sign in successful",
@@ -278,12 +207,6 @@ const Auth = () => {
     }
   };
 
-  // Special function for development mode to bypass email verification
-  const switchVerificationMethod = () => {
-    setVerificationMethod(verificationMethod === "email" ? "manual" : "email");
-    setVerificationCode("");
-  };
-
   if (showVerification) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gradient-to-b from-white to-pink-50">
@@ -292,39 +215,20 @@ const Auth = () => {
             <LoveBugLogo />
             <CardTitle className="text-3xl font-bold text-red-500">Verify your email</CardTitle>
             <p className="text-muted-foreground">
-              We've sent a verification code to {pendingEmail}. 
-              {verificationMethod === "email" 
-                ? "Please check your email and enter the code below." 
-                : "For development, you can use the manual verification option."}
+              We've sent a verification code to {pendingEmail}. Please check your email and enter the code below.
             </p>
           </CardHeader>
           <form onSubmit={handleVerification}>
             <CardContent className="space-y-4 pt-6">
-              {verificationMethod === "email" ? (
-                <div className="space-y-2">
-                  <Input
-                    type="text"
-                    placeholder="Verification Code"
-                    value={verificationCode}
-                    onChange={(e) => setVerificationCode(e.target.value)}
-                    required
-                  />
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md text-yellow-800 text-sm">
-                    <p className="font-medium">Development Mode Active</p>
-                    <p>Email verification is bypassed. Enter your password to continue.</p>
-                  </div>
-                  <Input
-                    type="password"
-                    placeholder="Password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
-                </div>
-              )}
+              <div className="space-y-2">
+                <Input
+                  type="text"
+                  placeholder="Verification Code"
+                  value={verificationCode}
+                  onChange={(e) => setVerificationCode(e.target.value)}
+                  required
+                />
+              </div>
             </CardContent>
             <CardFooter className="flex flex-col gap-2">
               <Button
@@ -332,40 +236,21 @@ const Auth = () => {
                 className="w-full bg-gradient-to-r from-pink-400 to-pink-500 hover:from-pink-500 hover:to-pink-600"
                 disabled={loading}
               >
-                {loading ? "Processing..." : (verificationMethod === "email" ? "Verify Email" : "Continue")}
+                {loading ? "Verifying..." : "Verify Email"}
               </Button>
-              
-              {verificationMethod === "email" && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={resendVerificationCode}
-                  disabled={loading}
-                  className="w-full mt-2"
-                >
-                  <Mail className="mr-2 h-4 w-4" />
-                  Resend Verification Code
-                </Button>
-              )}
-              
-              {/* Development mode toggle */}
               <Button
                 type="button"
-                variant="ghost"
-                onClick={switchVerificationMethod}
-                className="mt-2 text-xs text-gray-500"
+                variant="outline"
+                onClick={resendVerificationCode}
+                disabled={loading}
+                className="w-full mt-2"
               >
-                {verificationMethod === "email" 
-                  ? "Development Mode: Skip Email Verification" 
-                  : "Switch to Email Verification"}
+                Resend Verification Code
               </Button>
-              
               <Button
                 type="button"
                 variant="link"
-                onClick={() => {
-                  setShowVerification(false);
-                }}
+                onClick={() => setShowVerification(false)}
                 className="mt-2"
               >
                 Back to Login
