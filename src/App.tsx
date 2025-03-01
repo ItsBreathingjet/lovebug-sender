@@ -30,7 +30,15 @@ const queryClient = new QueryClient();
 // We need to use a wrapper for routes to use hooks
 const AppRoutes = () => {
   useEmailVerification();
-  const { user } = useContext(AuthContext);
+  const { user, loading } = useContext(AuthContext);
+  const location = useLocation();
+  
+  // If we're loading the user, show nothing or a loading indicator
+  if (loading) {
+    return <div className="flex items-center justify-center h-screen">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-pink-500"></div>
+    </div>;
+  }
   
   return (
     <Routes>
@@ -85,16 +93,23 @@ const App = () => {
   }, []);
 
   const fetchProfile = async (userId: string) => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
-    
-    if (!error && data) {
-      setProfile(data);
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      
+      if (!error && data) {
+        setProfile(data);
+      } else if (error) {
+        console.error("Error fetching profile:", error);
+      }
+      setLoading(false);
+    } catch (err) {
+      console.error("Unexpected error fetching profile:", err);
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (

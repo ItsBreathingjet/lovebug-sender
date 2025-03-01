@@ -13,20 +13,29 @@ export const Navbar = () => {
   const { toast } = useToast();
 
   const handleSignOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    
-    if (error) {
+    try {
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        toast({
+          title: "Error signing out",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Signed out",
+          description: "You have been signed out successfully",
+        });
+        navigate("/auth");
+      }
+    } catch (err) {
+      console.error("Sign out error:", err);
       toast({
         title: "Error signing out",
-        description: error.message,
+        description: "An unexpected error occurred",
         variant: "destructive",
       });
-    } else {
-      toast({
-        title: "Signed out",
-        description: "You have been signed out successfully",
-      });
-      navigate("/auth");
     }
   };
 
