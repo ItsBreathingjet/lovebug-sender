@@ -29,27 +29,33 @@ const queryClient = new QueryClient();
 
 // We need to use a wrapper for routes to use hooks
 const AppRoutes = () => {
-  useEmailVerification();
+  const { isVerified } = useEmailVerification();
   const { user, loading } = useContext(AuthContext);
   const location = useLocation();
   
-  // If we're loading the user, show nothing or a loading indicator
+  // If we're loading the user, show a loading indicator
   if (loading) {
     return <div className="flex items-center justify-center h-screen">
       <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-pink-500"></div>
     </div>;
   }
   
+  // Check if this is the auth page and user is not verified
+  const isAuthPage = location.pathname === '/auth';
+  
+  // User needs to be verified and logged in to access protected routes
+  const isAuthenticated = user && isVerified;
+  
   return (
     <Routes>
       <Route path="/auth" element={
-        !user ? <Auth /> : <Navigate to="/" replace />
+        !isAuthenticated ? <Auth /> : <Navigate to="/" replace />
       } />
       <Route path="/" element={
-        user ? <Index /> : <Navigate to="/auth" replace />
+        isAuthenticated ? <Index /> : <Navigate to="/auth" replace />
       } />
       <Route path="/connections" element={
-        user ? <Connections /> : <Navigate to="/auth" replace />
+        isAuthenticated ? <Connections /> : <Navigate to="/auth" replace />
       } />
       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
       <Route path="*" element={<NotFound />} />

@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { HeartPulse } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const LoveBugLogo = () => (
   <div className="relative w-24 h-24 mx-auto mb-4">
@@ -29,10 +30,48 @@ const Auth = () => {
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [loading, setLoading] = useState(false);
-  const [verificationCode, setVerificationCode] = useState("");
   const [showVerification, setShowVerification] = useState(false);
   const [pendingEmail, setPendingEmail] = useState("");
+  const [verifying, setVerifying] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
+
+  // Listen for verification status changes
+  useEffect(() => {
+    if (showVerification) {
+      const checkVerificationStatus = async () => {
+        if (!pendingEmail) return;
+        
+        try {
+          const { data, error } = await supabase.auth.getUser();
+          
+          // If we can get the user details and there's no error, it means they've verified their email
+          if (data?.user && !error) {
+            // Check if the user is confirmed
+            if (data.user.email_confirmed_at) {
+              toast({
+                title: "Email verified!",
+                description: "Your email has been verified. Welcome to LoveBug!",
+                className: "bg-gradient-to-r from-pink-400 to-pink-500 text-white border-none",
+              });
+              setShowVerification(false);
+              navigate("/");
+              return;
+            }
+          }
+          
+          // If still not verified, check again in 3 seconds
+          setTimeout(checkVerificationStatus, 3000);
+        } catch (error) {
+          console.error("Error checking verification status:", error);
+          // Continue checking even if there's an error
+          setTimeout(checkVerificationStatus, 3000);
+        }
+      };
+      
+      checkVerificationStatus();
+    }
+  }, [showVerification, pendingEmail, toast, navigate]);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,7 +97,7 @@ const Auth = () => {
             username,
             display_name: displayName || username,
           },
-          emailRedirectTo: window.location.origin,
+          emailRedirectTo: `${window.location.origin}?verification=true`,
         },
       });
 
@@ -71,9 +110,10 @@ const Auth = () => {
       } else {
         setPendingEmail(email);
         setShowVerification(true);
+        setVerifying(true);
         toast({
           title: "Verification email sent",
-          description: "Please check your email for a verification code.",
+          description: "Please check your email for a verification link.",
           className: "bg-gradient-to-r from-pink-400 to-pink-500 text-white border-none",
         });
       }
@@ -84,44 +124,6 @@ const Auth = () => {
         variant: "destructive",
       });
       console.error("Sign up error:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerification = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      const { data, error } = await supabase.auth.verifyOtp({
-        email: pendingEmail,
-        token: verificationCode,
-        type: 'signup',
-      });
-
-      if (error) {
-        toast({
-          title: "Verification failed",
-          description: error.message,
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Verification successful",
-          description: "Your account has been verified. Welcome to LoveBug!",
-          className: "bg-gradient-to-r from-pink-400 to-pink-500 text-white border-none",
-        });
-        setShowVerification(false);
-        // Verification successful - user is now signed in
-      }
-    } catch (error) {
-      toast({
-        title: "An error occurred",
-        description: "Something went wrong. Please try again.",
-        variant: "destructive",
-      });
-      console.error("Verification error:", error);
     } finally {
       setLoading(false);
     }
@@ -154,11 +156,23 @@ const Auth = () => {
           variant: "destructive",
         });
       } else {
-        toast({
-          title: "Sign in successful",
-          description: "Welcome back to LoveBug!",
-          className: "bg-gradient-to-r from-pink-400 to-pink-500 text-white border-none",
-        });
+        // Check if the user's email is confirmed
+        if (data.user && !data.user.email_confirmed_at) {
+          toast({
+            title: "Email not verified",
+            description: "Please verify your email before logging in.",
+            variant: "destructive",
+          });
+          // Show verification screen if email is not confirmed
+          setPendingEmail(email);
+          setShowVerification(true);
+        } else {
+          toast({
+            title: "Sign in successful",
+            description: "Welcome back to LoveBug!",
+            className: "bg-gradient-to-r from-pink-400 to-pink-500 text-white border-none",
+          });
+        }
       }
     } catch (error) {
       toast({
@@ -172,7 +186,7 @@ const Auth = () => {
     }
   };
 
-  const resendVerificationCode = async () => {
+  const resendVerificationEmail = async () => {
     if (!pendingEmail) return;
     
     setLoading(true);
@@ -180,20 +194,24 @@ const Auth = () => {
       const { data, error } = await supabase.auth.resend({
         email: pendingEmail,
         type: 'signup',
+        options: {
+          emailRedirectTo: `${window.location.origin}?verification=true`,
+        }
       });
 
       if (error) {
         toast({
-          title: "Failed to resend code",
+          title: "Failed to resend email",
           description: error.message,
           variant: "destructive",
         });
       } else {
         toast({
           title: "Verification email resent",
-          description: "Please check your email for a new verification code.",
+          description: "Please check your email for a verification link.",
           className: "bg-gradient-to-r from-pink-400 to-pink-500 text-white border-none",
         });
+        setVerifying(true);
       }
     } catch (error) {
       toast({
@@ -215,48 +233,40 @@ const Auth = () => {
             <LoveBugLogo />
             <CardTitle className="text-3xl font-bold text-red-500">Verify your email</CardTitle>
             <p className="text-muted-foreground">
-              We've sent a verification code to {pendingEmail}. Please check your email and enter the code below.
+              We've sent a verification link to {pendingEmail}. Please check your email and click the link to verify your account.
             </p>
           </CardHeader>
-          <form onSubmit={handleVerification}>
-            <CardContent className="space-y-4 pt-6">
-              <div className="space-y-2">
-                <Input
-                  type="text"
-                  placeholder="Verification Code"
-                  value={verificationCode}
-                  onChange={(e) => setVerificationCode(e.target.value)}
-                  required
-                />
+          <CardContent className="space-y-4 pt-6 text-center">
+            {verifying ? (
+              <div className="flex flex-col items-center justify-center py-6">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-pink-500 mb-4"></div>
+                <p className="text-muted-foreground">Waiting for verification...</p>
               </div>
-            </CardContent>
-            <CardFooter className="flex flex-col gap-2">
-              <Button
-                type="submit"
-                className="w-full bg-gradient-to-r from-pink-400 to-pink-500 hover:from-pink-500 hover:to-pink-600"
-                disabled={loading}
-              >
-                {loading ? "Verifying..." : "Verify Email"}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={resendVerificationCode}
-                disabled={loading}
-                className="w-full mt-2"
-              >
-                Resend Verification Code
-              </Button>
-              <Button
-                type="button"
-                variant="link"
-                onClick={() => setShowVerification(false)}
-                className="mt-2"
-              >
-                Back to Login
-              </Button>
-            </CardFooter>
-          </form>
+            ) : (
+              <p className="text-muted-foreground">
+                Haven't received the email? Check your spam folder or click the button below to resend the verification email.
+              </p>
+            )}
+          </CardContent>
+          <CardFooter className="flex flex-col gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={resendVerificationEmail}
+              disabled={loading || verifying}
+              className="w-full mt-2"
+            >
+              {loading ? "Sending..." : "Resend Verification Email"}
+            </Button>
+            <Button
+              type="button"
+              variant="link"
+              onClick={() => setShowVerification(false)}
+              className="mt-2"
+            >
+              Back to Login
+            </Button>
+          </CardFooter>
         </Card>
       </div>
     );
