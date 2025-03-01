@@ -59,13 +59,13 @@ const Index = () => {
   const fetchConnections = useCallback(async () => {
     setIsLoading(true);
     try {
-      // Optimize by using a JOIN query to get profiles together with connections
+      // Fixed query by using proper JOIN syntax
       const { data, error } = await supabase
         .from("connections")
         .select(`
           id,
           connected_user_id,
-          profiles:connected_user_id(id, username, display_name)
+          profile:profiles!connected_user_id(id, username, display_name)
         `)
         .eq("user_id", user.id)
         .eq("status", "accepted");
@@ -75,7 +75,7 @@ const Index = () => {
       const formattedConnections = data?.map(item => ({
         id: item.id,
         connected_user_id: item.connected_user_id,
-        profile: item.profiles
+        profile: item.profile
       })) || [];
 
       setConnections(formattedConnections);
@@ -282,7 +282,7 @@ const Index = () => {
   );
 };
 
-// Optimized ReceivedLoveBugs component
+// Fix the ReceivedLoveBugs component to use correct JOIN syntax as well
 const ReceivedLoveBugs = memo(({ userId }: { userId: string }) => {
   const [receivedLoveBugs, setReceivedLoveBugs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -296,7 +296,7 @@ const ReceivedLoveBugs = memo(({ userId }: { userId: string }) => {
   const fetchReceivedLoveBugs = async () => {
     setLoading(true);
     try {
-      // Optimize by using a JOIN query to get all data in one request
+      // Fixed JOIN query
       const { data, error } = await supabase
         .from('messages')
         .select(`
@@ -304,7 +304,7 @@ const ReceivedLoveBugs = memo(({ userId }: { userId: string }) => {
           message, 
           created_at, 
           sender_id,
-          profiles:sender_id(username, display_name)
+          profiles:profiles!sender_id(username, display_name)
         `)
         .eq('recipient_id', userId)
         .order('created_at', { ascending: false })
