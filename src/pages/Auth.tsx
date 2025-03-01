@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,7 +35,6 @@ const Auth = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Listen for verification status changes
   useEffect(() => {
     if (showVerification) {
       const checkVerificationStatus = async () => {
@@ -45,9 +43,7 @@ const Auth = () => {
         try {
           const { data, error } = await supabase.auth.getUser();
           
-          // If we can get the user details and there's no error, it means they've verified their email
           if (data?.user && !error) {
-            // Check if the user is confirmed
             if (data.user.email_confirmed_at) {
               toast({
                 title: "Email verified!",
@@ -60,11 +56,9 @@ const Auth = () => {
             }
           }
           
-          // If still not verified, check again in 3 seconds
           setTimeout(checkVerificationStatus, 3000);
         } catch (error) {
           console.error("Error checking verification status:", error);
-          // Continue checking even if there's an error
           setTimeout(checkVerificationStatus, 3000);
         }
       };
@@ -77,7 +71,6 @@ const Auth = () => {
     e.preventDefault();
     setLoading(true);
 
-    // Validate the form data
     if (!email || !password || !username) {
       toast({
         title: "Missing fields",
@@ -89,6 +82,9 @@ const Auth = () => {
     }
 
     try {
+      const redirectTo = `${window.location.origin}?verification=true`;
+      console.log("Redirect URL:", redirectTo);
+      
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -97,7 +93,7 @@ const Auth = () => {
             username,
             display_name: displayName || username,
           },
-          emailRedirectTo: `${window.location.origin}?verification=true`,
+          emailRedirectTo: redirectTo,
         },
       });
 
@@ -113,7 +109,7 @@ const Auth = () => {
         setVerifying(true);
         toast({
           title: "Verification email sent",
-          description: "Please check your email for a verification link.",
+          description: "Please check your email (including spam folder) for a verification link.",
           className: "bg-gradient-to-r from-pink-400 to-pink-500 text-white border-none",
         });
       }
@@ -156,14 +152,12 @@ const Auth = () => {
           variant: "destructive",
         });
       } else {
-        // Check if the user's email is confirmed
         if (data.user && !data.user.email_confirmed_at) {
           toast({
             title: "Email not verified",
             description: "Please verify your email before logging in.",
             variant: "destructive",
           });
-          // Show verification screen if email is not confirmed
           setPendingEmail(email);
           setShowVerification(true);
         } else {
@@ -191,11 +185,14 @@ const Auth = () => {
     
     setLoading(true);
     try {
+      const redirectTo = `${window.location.origin}?verification=true`;
+      console.log("Resending with redirect URL:", redirectTo);
+      
       const { data, error } = await supabase.auth.resend({
         email: pendingEmail,
         type: 'signup',
         options: {
-          emailRedirectTo: `${window.location.origin}?verification=true`,
+          emailRedirectTo: redirectTo,
         }
       });
 
@@ -208,7 +205,7 @@ const Auth = () => {
       } else {
         toast({
           title: "Verification email resent",
-          description: "Please check your email for a verification link.",
+          description: "Please check your email (including spam folder) for a verification link.",
           className: "bg-gradient-to-r from-pink-400 to-pink-500 text-white border-none",
         });
         setVerifying(true);
@@ -234,6 +231,9 @@ const Auth = () => {
             <CardTitle className="text-3xl font-bold text-red-500">Verify your email</CardTitle>
             <p className="text-muted-foreground">
               We've sent a verification link to {pendingEmail}. Please check your email and click the link to verify your account.
+            </p>
+            <p className="text-xs text-muted-foreground mt-2">
+              Don't forget to check your spam or junk folder if you don't see it in your inbox.
             </p>
           </CardHeader>
           <CardContent className="space-y-4 pt-6 text-center">
