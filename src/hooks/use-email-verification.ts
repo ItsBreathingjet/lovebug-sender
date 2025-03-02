@@ -10,7 +10,7 @@ export const useEmailVerification = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useContext(AuthContext);
+  const { user, loading } = useContext(AuthContext);
 
   useEffect(() => {
     const handleEmailVerification = async () => {
@@ -19,6 +19,8 @@ export const useEmailVerification = () => {
       const isVerification = searchParams.get('verification') === 'true';
       
       if (isVerification) {
+        console.log("Verification parameter detected in URL");
+        
         // Clear URL params to prevent reprocessing on refresh
         window.history.replaceState({}, document.title, window.location.pathname);
         
@@ -45,6 +47,13 @@ export const useEmailVerification = () => {
             if (location.pathname !== '/') {
               navigate('/');
             }
+          } else {
+            console.log('User found but not verified yet:', data?.user);
+            
+            // If we're on the auth page, we'll let that component handle verification UI
+            if (location.pathname !== '/auth') {
+              navigate('/auth?verification=true');
+            }
           }
         } catch (error) {
           console.error('Verification check error:', error);
@@ -57,8 +66,10 @@ export const useEmailVerification = () => {
       }
     };
 
-    handleEmailVerification();
-  }, [location.search, navigate, toast, location.pathname]);
+    if (!loading) {
+      handleEmailVerification();
+    }
+  }, [location.search, navigate, toast, location.pathname, loading]);
 
   // If we have a user and they've confirmed their email, they are verified
   return { 

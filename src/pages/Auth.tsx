@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +35,21 @@ const Auth = () => {
   const [verifying, setVerifying] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Try to get verification status from URL on initial load
+    const queryParams = new URLSearchParams(window.location.search);
+    if (queryParams.get("verification") === "true") {
+      // Clear the URL parameter
+      window.history.replaceState({}, document.title, window.location.pathname);
+      
+      toast({
+        title: "Email verification successful!",
+        description: "Your email has been verified. You can now log in.",
+        className: "bg-gradient-to-r from-pink-400 to-pink-500 text-white border-none",
+      });
+    }
+  }, [toast]);
 
   useEffect(() => {
     if (showVerification) {
@@ -82,8 +98,10 @@ const Auth = () => {
     }
 
     try {
-      const redirectTo = `${window.location.origin}?verification=true`;
-      console.log("Redirect URL:", redirectTo);
+      // Use the current origin for the redirect URL, ensuring it's consistent
+      const currentOrigin = window.location.origin;
+      const redirectTo = `${currentOrigin}/auth?verification=true`;
+      console.log("Sign-up with redirect URL:", redirectTo);
       
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -98,28 +116,42 @@ const Auth = () => {
       });
 
       if (error) {
+        console.error("Sign up error:", error);
         toast({
           title: "Sign up failed",
           description: error.message,
           variant: "destructive",
         });
-      } else {
+      } else if (data?.user) {
+        console.log("Sign up successful:", data);
         setPendingEmail(email);
         setShowVerification(true);
         setVerifying(true);
-        toast({
-          title: "Verification email sent",
-          description: "Please check your email (including spam folder) for a verification link.",
-          className: "bg-gradient-to-r from-pink-400 to-pink-500 text-white border-none",
-        });
+        
+        // Double-check if the email has already been confirmed (rare but possible)
+        if (data.user.email_confirmed_at) {
+          toast({
+            title: "Account already verified",
+            description: "Your email is already verified. You can now log in.",
+            className: "bg-gradient-to-r from-pink-400 to-pink-500 text-white border-none",
+          });
+          setShowVerification(false);
+          navigate("/");
+        } else {
+          toast({
+            title: "Verification email sent",
+            description: "Please check your email (including spam folder) for a verification link. It may take a few minutes to arrive.",
+            className: "bg-gradient-to-r from-pink-400 to-pink-500 text-white border-none",
+          });
+        }
       }
     } catch (error) {
+      console.error("Unexpected sign up error:", error);
       toast({
         title: "An error occurred",
         description: "Something went wrong. Please try again.",
         variant: "destructive",
       });
-      console.error("Sign up error:", error);
     } finally {
       setLoading(false);
     }
@@ -140,19 +172,23 @@ const Auth = () => {
     }
 
     try {
+      console.log("Attempting sign in for:", email);
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
+        console.error("Sign in error:", error);
         toast({
           title: "Sign in failed",
           description: error.message,
           variant: "destructive",
         });
-      } else {
-        if (data.user && !data.user.email_confirmed_at) {
+      } else if (data?.user) {
+        // Check if email is verified
+        if (!data.user.email_confirmed_at) {
+          console.log("User not verified:", data.user);
           toast({
             title: "Email not verified",
             description: "Please verify your email before logging in.",
@@ -161,20 +197,22 @@ const Auth = () => {
           setPendingEmail(email);
           setShowVerification(true);
         } else {
+          console.log("Sign in successful:", data.user);
           toast({
             title: "Sign in successful",
             description: "Welcome back to LoveBug!",
             className: "bg-gradient-to-r from-pink-400 to-pink-500 text-white border-none",
           });
+          navigate("/");
         }
       }
     } catch (error) {
+      console.error("Unexpected sign in error:", error);
       toast({
         title: "An error occurred",
         description: "Something went wrong. Please try again.",
         variant: "destructive",
       });
-      console.error("Sign in error:", error);
     } finally {
       setLoading(false);
     }
@@ -185,7 +223,8 @@ const Auth = () => {
     
     setLoading(true);
     try {
-      const redirectTo = `${window.location.origin}?verification=true`;
+      const currentOrigin = window.location.origin;
+      const redirectTo = `${currentOrigin}/auth?verification=true`;
       console.log("Resending with redirect URL:", redirectTo);
       
       const { data, error } = await supabase.auth.resend({
@@ -197,26 +236,28 @@ const Auth = () => {
       });
 
       if (error) {
+        console.error("Resend verification error:", error);
         toast({
           title: "Failed to resend email",
           description: error.message,
           variant: "destructive",
         });
       } else {
+        console.log("Verification email resent:", data);
         toast({
           title: "Verification email resent",
-          description: "Please check your email (including spam folder) for a verification link.",
+          description: "Please check your email (including spam folder) for a verification link. It may take a few minutes to arrive.",
           className: "bg-gradient-to-r from-pink-400 to-pink-500 text-white border-none",
         });
         setVerifying(true);
       }
     } catch (error) {
+      console.error("Unexpected resend verification error:", error);
       toast({
         title: "An error occurred",
         description: "Something went wrong. Please try again.",
         variant: "destructive",
       });
-      console.error("Resend verification error:", error);
     } finally {
       setLoading(false);
     }
@@ -230,7 +271,7 @@ const Auth = () => {
             <LoveBugLogo />
             <CardTitle className="text-3xl font-bold text-red-500">Verify your email</CardTitle>
             <p className="text-muted-foreground">
-              We've sent a verification link to {pendingEmail}. Please check your email and click the link to verify your account.
+              We've sent a verification link to <strong>{pendingEmail}</strong>. Please check your email and click the link to verify your account.
             </p>
             <p className="text-xs text-muted-foreground mt-2">
               Don't forget to check your spam or junk folder if you don't see it in your inbox.
@@ -241,6 +282,9 @@ const Auth = () => {
               <div className="flex flex-col items-center justify-center py-6">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-pink-500 mb-4"></div>
                 <p className="text-muted-foreground">Waiting for verification...</p>
+                <p className="text-xs text-muted-foreground mt-2">
+                  (This will automatically update when you click the verification link in your email)
+                </p>
               </div>
             ) : (
               <p className="text-muted-foreground">
