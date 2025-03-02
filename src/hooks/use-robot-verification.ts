@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 export const useRobotVerification = () => {
   const [isVerified, setIsVerified] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [lastAttemptTime, setLastAttemptTime] = useState<Date | null>(null);
 
   useEffect(() => {
     const checkVerificationStatus = async () => {
@@ -64,9 +65,24 @@ export const useRobotVerification = () => {
     }
   };
 
+  const recordFailedAttempt = () => {
+    setLastAttemptTime(new Date());
+  };
+
+  const canAttemptVerification = () => {
+    if (!lastAttemptTime) return true;
+    
+    const now = new Date();
+    const diffInSeconds = (now.getTime() - lastAttemptTime.getTime()) / 1000;
+    return diffInSeconds >= 60; // 60 seconds (1 minute) cooldown
+  };
+
   return { 
     isRobotVerified: isVerified,
     loading,
     setVerified,
+    recordFailedAttempt,
+    canAttemptVerification,
+    lastAttemptTime
   };
 };
