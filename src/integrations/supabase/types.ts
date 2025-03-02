@@ -90,7 +90,6 @@ export type Database = {
           created_at: string
           display_name: string | null
           id: string
-          is_robot_verified: boolean | null
           username: string
         }
         Insert: {
@@ -98,7 +97,6 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id: string
-          is_robot_verified?: boolean | null
           username: string
         }
         Update: {
@@ -106,7 +104,6 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id?: string
-          is_robot_verified?: boolean | null
           username?: string
         }
         Relationships: []
