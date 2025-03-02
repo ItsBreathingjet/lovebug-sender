@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,7 +25,6 @@ const LoveBugLogo = () => (
   </div>
 );
 
-// Puzzle piece verification component
 const PuzzleVerification = ({ onVerified }: { onVerified: () => void }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const puzzlePieceRef = useRef<HTMLDivElement>(null);
@@ -39,13 +37,10 @@ const PuzzleVerification = ({ onVerified }: { onVerified: () => void }) => {
   const [cooldownRemaining, setCooldownRemaining] = useState(0);
   const [cooldownInterval, setCooldownInterval] = useState<NodeJS.Timeout | null>(null);
 
-  // Generate a random position for the puzzle piece target
   useEffect(() => {
-    // Generate random target position between 20% and 80% of the width
     const randomPosition = Math.floor(Math.random() * 60) + 20;
     setTargetPosition(randomPosition);
     
-    // Draw the puzzle canvas
     drawPuzzleCanvas();
     
     return () => {
@@ -53,7 +48,6 @@ const PuzzleVerification = ({ onVerified }: { onVerified: () => void }) => {
     };
   }, []);
 
-  // Update the cooldown timer
   useEffect(() => {
     if (lastAttemptTime) {
       const interval = setInterval(() => {
@@ -81,18 +75,14 @@ const PuzzleVerification = ({ onVerified }: { onVerified: () => void }) => {
     const width = canvasRef.current.width;
     const height = canvasRef.current.height;
     
-    // Clear canvas
     ctx.clearRect(0, 0, width, height);
     
-    // Draw background
     ctx.fillStyle = '#f3f4f6';
     ctx.fillRect(0, 0, width, height);
     
-    // Draw puzzle outline
     ctx.fillStyle = '#d1d5db';
     ctx.fillRect(0, 0, width, height);
     
-    // Draw missing piece area at the target position
     const pieceWidth = width * 0.15;
     const pieceHeight = height * 0.8;
     const pieceX = width * (targetPosition / 100) - (pieceWidth / 2);
@@ -101,7 +91,6 @@ const PuzzleVerification = ({ onVerified }: { onVerified: () => void }) => {
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(pieceX, pieceY, pieceWidth, pieceHeight);
     
-    // Draw border
     ctx.strokeStyle = '#9ca3af';
     ctx.lineWidth = 2;
     ctx.strokeRect(0, 0, width, height);
@@ -131,10 +120,8 @@ const PuzzleVerification = ({ onVerified }: { onVerified: () => void }) => {
 
     setError("");
     
-    // Calculate the difference between slider position and target position
     const difference = Math.abs(sliderValue - targetPosition);
     
-    // If within 3% accuracy (97% correctness), consider it a success
     if (difference <= 3) {
       setLoading(true);
       const success = await setVerified();
@@ -155,7 +142,6 @@ const PuzzleVerification = ({ onVerified }: { onVerified: () => void }) => {
         setLoading(false);
       }
     } else {
-      // Record failed attempt and enforce cooldown
       recordFailedAttempt();
       setError("Verification failed. Please try again in 60 seconds.");
       toast({
@@ -321,7 +307,6 @@ const Auth = () => {
           variant: "destructive",
         });
       } else if (data?.user) {
-        // Check if user has passed the robot verification
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('is_robot_verified')
@@ -335,10 +320,8 @@ const Auth = () => {
             description: "Please try again.",
             variant: "destructive",
           });
-          // Sign out the user since we can't verify their status
           await supabase.auth.signOut();
         } else if (!profileData.is_robot_verified) {
-          // User hasn't passed the robot verification
           console.log("User not robot-verified:", data.user);
           toast({
             title: "Verification required",
@@ -349,7 +332,6 @@ const Auth = () => {
           setShowRobotVerification(true);
           setRobotVerificationRequired(true);
         } else {
-          // User is verified and can log in
           console.log("Sign in successful:", data.user);
           toast({
             title: "Sign in successful",
@@ -373,10 +355,8 @@ const Auth = () => {
 
   const handleRobotVerificationComplete = () => {
     if (robotVerificationRequired) {
-      // If verification was required for login, take them to the home page
       navigate("/");
     } else {
-      // If it was after signup, just hide the verification screen
       setShowRobotVerification(false);
       toast({
         title: "Verification complete",
