@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { HeartPulse } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useRobotVerification } from "@/hooks/use-robot-verification";
 
 const LoveBugLogo = () => (
   <div className="relative w-24 h-24 mx-auto mb-4">
@@ -24,64 +25,134 @@ const LoveBugLogo = () => (
   </div>
 );
 
+// Robot verification component
+const RobotVerification = ({ onVerified }: { onVerified: () => void }) => {
+  const [step, setStep] = useState(1);
+  const [answer, setAnswer] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const { setVerified } = useRobotVerification();
+  const { toast } = useToast();
+
+  // A simple set of questions that are easy for humans but hard for bots
+  const questions = [
+    {
+      question: "What do you call a baby dog?",
+      answer: "puppy"
+    },
+    {
+      question: "What color is the sky on a clear day?",
+      answer: "blue"
+    },
+    {
+      question: "How many legs does a cat have?",
+      answer: "4"
+    }
+  ];
+
+  const currentQuestion = questions[step - 1];
+
+  const handleAnswerSubmit = async () => {
+    if (!answer.trim()) {
+      setError("Please provide an answer");
+      return;
+    }
+
+    // Check if the answer is correct (case insensitive)
+    if (answer.trim().toLowerCase() === currentQuestion.answer) {
+      if (step < questions.length) {
+        // Move to the next question
+        setStep(step + 1);
+        setAnswer("");
+        setError("");
+      } else {
+        // All questions answered correctly
+        setLoading(true);
+        const success = await setVerified();
+        
+        if (success) {
+          toast({
+            title: "Verification successful",
+            description: "You've proven you're not a robot!",
+            className: "bg-gradient-to-r from-pink-400 to-pink-500 text-white border-none",
+          });
+          onVerified();
+        } else {
+          toast({
+            title: "Verification failed",
+            description: "There was an error saving your verification status.",
+            variant: "destructive",
+          });
+          setLoading(false);
+        }
+      }
+    } else {
+      setError("Incorrect answer. Please try again.");
+    }
+  };
+
+  return (
+    <Card className="w-full max-w-md">
+      <CardHeader className="text-center">
+        <LoveBugLogo />
+        <CardTitle className="text-3xl font-bold text-red-500">Are you a robot?</CardTitle>
+        <p className="text-muted-foreground">
+          Please answer this simple question to verify you're human.
+        </p>
+      </CardHeader>
+
+      <CardContent className="space-y-4 pt-6">
+        <div className="text-center mb-6">
+          <h3 className="text-xl font-medium">{currentQuestion.question}</h3>
+        </div>
+
+        <div className="space-y-2">
+          <Input
+            type="text"
+            placeholder="Your answer"
+            value={answer}
+            onChange={(e) => setAnswer(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleAnswerSubmit();
+              }
+            }}
+          />
+          {error && <p className="text-red-500 text-sm">{error}</p>}
+        </div>
+
+        <div className="flex justify-between items-center mt-4">
+          <div className="text-sm text-muted-foreground">
+            Question {step} of {questions.length}
+          </div>
+        </div>
+      </CardContent>
+
+      <CardFooter>
+        <Button
+          onClick={handleAnswerSubmit}
+          className="w-full bg-gradient-to-r from-pink-400 to-pink-500 hover:from-pink-500 hover:to-pink-600"
+          disabled={loading}
+        >
+          {loading ? "Verifying..." : "Submit Answer"}
+        </Button>
+      </CardFooter>
+    </Card>
+  );
+};
+
 const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [loading, setLoading] = useState(false);
-  const [showVerification, setShowVerification] = useState(false);
-  const [pendingEmail, setPendingEmail] = useState("");
-  const [verifying, setVerifying] = useState(false);
+  const [showRobotVerification, setShowRobotVerification] = useState(false);
+  const [robotVerificationRequired, setRobotVerificationRequired] = useState(false);
+  const [pendingUser, setPendingUser] = useState<any>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    // Try to get verification status from URL on initial load
-    const queryParams = new URLSearchParams(window.location.search);
-    if (queryParams.get("verification") === "true") {
-      // Clear the URL parameter
-      window.history.replaceState({}, document.title, window.location.pathname);
-      
-      toast({
-        title: "Email verification successful!",
-        description: "Your email has been verified. You can now log in.",
-        className: "bg-gradient-to-r from-pink-400 to-pink-500 text-white border-none",
-      });
-    }
-  }, [toast]);
-
-  useEffect(() => {
-    if (showVerification) {
-      const checkVerificationStatus = async () => {
-        if (!pendingEmail) return;
-        
-        try {
-          const { data, error } = await supabase.auth.getUser();
-          
-          if (data?.user && !error) {
-            if (data.user.email_confirmed_at) {
-              toast({
-                title: "Email verified!",
-                description: "Your email has been verified. Welcome to LoveBug!",
-                className: "bg-gradient-to-r from-pink-400 to-pink-500 text-white border-none",
-              });
-              setShowVerification(false);
-              navigate("/");
-              return;
-            }
-          }
-          
-          setTimeout(checkVerificationStatus, 3000);
-        } catch (error) {
-          console.error("Error checking verification status:", error);
-          setTimeout(checkVerificationStatus, 3000);
-        }
-      };
-      
-      checkVerificationStatus();
-    }
-  }, [showVerification, pendingEmail, toast, navigate]);
+  const { isRobotVerified } = useRobotVerification();
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,11 +169,6 @@ const Auth = () => {
     }
 
     try {
-      // Use the current origin for the redirect URL, ensuring it's consistent
-      const currentOrigin = window.location.origin;
-      const redirectTo = `${currentOrigin}/auth?verification=true`;
-      console.log("Sign-up with redirect URL:", redirectTo);
-      
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -111,7 +177,6 @@ const Auth = () => {
             username,
             display_name: displayName || username,
           },
-          emailRedirectTo: redirectTo,
         },
       });
 
@@ -124,26 +189,14 @@ const Auth = () => {
         });
       } else if (data?.user) {
         console.log("Sign up successful:", data);
-        setPendingEmail(email);
-        setShowVerification(true);
-        setVerifying(true);
+        toast({
+          title: "Sign up successful",
+          description: "Now let's verify you're not a robot.",
+          className: "bg-gradient-to-r from-pink-400 to-pink-500 text-white border-none",
+        });
         
-        // Double-check if the email has already been confirmed (rare but possible)
-        if (data.user.email_confirmed_at) {
-          toast({
-            title: "Account already verified",
-            description: "Your email is already verified. You can now log in.",
-            className: "bg-gradient-to-r from-pink-400 to-pink-500 text-white border-none",
-          });
-          setShowVerification(false);
-          navigate("/");
-        } else {
-          toast({
-            title: "Verification email sent",
-            description: "Please check your email (including spam folder) for a verification link. It may take a few minutes to arrive.",
-            className: "bg-gradient-to-r from-pink-400 to-pink-500 text-white border-none",
-          });
-        }
+        setPendingUser(data.user);
+        setShowRobotVerification(true);
       }
     } catch (error) {
       console.error("Unexpected sign up error:", error);
@@ -186,17 +239,35 @@ const Auth = () => {
           variant: "destructive",
         });
       } else if (data?.user) {
-        // Check if email is verified
-        if (!data.user.email_confirmed_at) {
-          console.log("User not verified:", data.user);
+        // Check if user has passed the robot verification
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('is_robot_verified')
+          .eq('id', data.user.id)
+          .single();
+          
+        if (profileError) {
+          console.error("Error fetching profile:", profileError);
           toast({
-            title: "Email not verified",
-            description: "Please verify your email before logging in.",
+            title: "Error checking verification status",
+            description: "Please try again.",
             variant: "destructive",
           });
-          setPendingEmail(email);
-          setShowVerification(true);
+          // Sign out the user since we can't verify their status
+          await supabase.auth.signOut();
+        } else if (!profileData.is_robot_verified) {
+          // User hasn't passed the robot verification
+          console.log("User not robot-verified:", data.user);
+          toast({
+            title: "Verification required",
+            description: "Please complete the verification before logging in.",
+            variant: "destructive",
+          });
+          setPendingUser(data.user);
+          setShowRobotVerification(true);
+          setRobotVerificationRequired(true);
         } else {
+          // User is verified and can log in
           console.log("Sign in successful:", data.user);
           toast({
             title: "Sign in successful",
@@ -218,100 +289,25 @@ const Auth = () => {
     }
   };
 
-  const resendVerificationEmail = async () => {
-    if (!pendingEmail) return;
-    
-    setLoading(true);
-    try {
-      const currentOrigin = window.location.origin;
-      const redirectTo = `${currentOrigin}/auth?verification=true`;
-      console.log("Resending with redirect URL:", redirectTo);
-      
-      const { data, error } = await supabase.auth.resend({
-        email: pendingEmail,
-        type: 'signup',
-        options: {
-          emailRedirectTo: redirectTo,
-        }
-      });
-
-      if (error) {
-        console.error("Resend verification error:", error);
-        toast({
-          title: "Failed to resend email",
-          description: error.message,
-          variant: "destructive",
-        });
-      } else {
-        console.log("Verification email resent:", data);
-        toast({
-          title: "Verification email resent",
-          description: "Please check your email (including spam folder) for a verification link. It may take a few minutes to arrive.",
-          className: "bg-gradient-to-r from-pink-400 to-pink-500 text-white border-none",
-        });
-        setVerifying(true);
-      }
-    } catch (error) {
-      console.error("Unexpected resend verification error:", error);
+  const handleRobotVerificationComplete = () => {
+    if (robotVerificationRequired) {
+      // If verification was required for login, take them to the home page
+      navigate("/");
+    } else {
+      // If it was after signup, just hide the verification screen
+      setShowRobotVerification(false);
       toast({
-        title: "An error occurred",
-        description: "Something went wrong. Please try again.",
-        variant: "destructive",
+        title: "Verification complete",
+        description: "You can now log in to your account.",
+        className: "bg-gradient-to-r from-pink-400 to-pink-500 text-white border-none",
       });
-    } finally {
-      setLoading(false);
     }
   };
 
-  if (showVerification) {
+  if (showRobotVerification) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gradient-to-b from-white to-pink-50">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <LoveBugLogo />
-            <CardTitle className="text-3xl font-bold text-red-500">Verify your email</CardTitle>
-            <p className="text-muted-foreground">
-              We've sent a verification link to <strong>{pendingEmail}</strong>. Please check your email and click the link to verify your account.
-            </p>
-            <p className="text-xs text-muted-foreground mt-2">
-              Don't forget to check your spam or junk folder if you don't see it in your inbox.
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-4 pt-6 text-center">
-            {verifying ? (
-              <div className="flex flex-col items-center justify-center py-6">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-pink-500 mb-4"></div>
-                <p className="text-muted-foreground">Waiting for verification...</p>
-                <p className="text-xs text-muted-foreground mt-2">
-                  (This will automatically update when you click the verification link in your email)
-                </p>
-              </div>
-            ) : (
-              <p className="text-muted-foreground">
-                Haven't received the email? Check your spam folder or click the button below to resend the verification email.
-              </p>
-            )}
-          </CardContent>
-          <CardFooter className="flex flex-col gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={resendVerificationEmail}
-              disabled={loading || verifying}
-              className="w-full mt-2"
-            >
-              {loading ? "Sending..." : "Resend Verification Email"}
-            </Button>
-            <Button
-              type="button"
-              variant="link"
-              onClick={() => setShowVerification(false)}
-              className="mt-2"
-            >
-              Back to Login
-            </Button>
-          </CardFooter>
-        </Card>
+        <RobotVerification onVerified={handleRobotVerificationComplete} />
       </div>
     );
   }

@@ -7,7 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-route
 import { useState, useEffect, useContext } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { createContext } from "react";
-import { useEmailVerification } from "@/hooks/use-email-verification";
+import { useRobotVerification } from "@/hooks/use-robot-verification";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Connections from "./pages/Connections";
@@ -29,22 +29,22 @@ const queryClient = new QueryClient();
 
 // We need to use a wrapper for routes to use hooks
 const AppRoutes = () => {
-  const { isVerified } = useEmailVerification();
+  const { isRobotVerified, loading: verificationLoading } = useRobotVerification();
   const { user, loading } = useContext(AuthContext);
   const location = useLocation();
   
   // If we're loading the user, show a loading indicator
-  if (loading) {
+  if (loading || verificationLoading) {
     return <div className="flex items-center justify-center h-screen">
       <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-pink-500"></div>
     </div>;
   }
   
-  // Check if this is the auth page and user is not verified
+  // Check if this is the auth page
   const isAuthPage = location.pathname === '/auth';
   
-  // User needs to be verified and logged in to access protected routes
-  const isAuthenticated = user && isVerified;
+  // User needs to be logged in and have passed the robot test to access protected routes
+  const isAuthenticated = user && isRobotVerified;
   
   return (
     <Routes>
