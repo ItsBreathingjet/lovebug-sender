@@ -1,5 +1,4 @@
-
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -9,7 +8,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { HeartPulse } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useRobotVerification } from "@/hooks/use-robot-verification";
-import { Slider } from "@/components/ui/slider";
 
 const LoveBugLogo = () => (
   <div className="relative w-24 h-24 mx-auto mb-4">
@@ -26,11 +24,9 @@ const LoveBugLogo = () => (
   </div>
 );
 
-const PuzzleVerification = ({ onVerified }: { onVerified: () => void }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const puzzlePieceRef = useRef<HTMLDivElement>(null);
-  const [sliderValue, setSliderValue] = useState(0);
-  const [targetPosition, setTargetPosition] = useState(0);
+const SimpleCaptcha = ({ onVerified }: { onVerified: () => void }) => {
+  const [captchaText, setCaptchaText] = useState("");
+  const [userInput, setUserInput] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const { setVerified, recordFailedAttempt, canAttemptVerification, lastAttemptTime } = useRobotVerification();
@@ -39,10 +35,7 @@ const PuzzleVerification = ({ onVerified }: { onVerified: () => void }) => {
   const [cooldownInterval, setCooldownInterval] = useState<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    const randomPosition = Math.floor(Math.random() * 60) + 20;
-    setTargetPosition(randomPosition);
-    
-    drawPuzzleCanvas();
+    generateCaptcha();
     
     return () => {
       if (cooldownInterval) clearInterval(cooldownInterval);
@@ -68,49 +61,14 @@ const PuzzleVerification = ({ onVerified }: { onVerified: () => void }) => {
     }
   }, [lastAttemptTime]);
 
-  const drawPuzzleCanvas = () => {
-    if (!canvasRef.current) return;
-    const ctx = canvasRef.current.getContext('2d');
-    if (!ctx) return;
-    
-    const width = canvasRef.current.width;
-    const height = canvasRef.current.height;
-    
-    ctx.clearRect(0, 0, width, height);
-    
-    ctx.fillStyle = '#f3f4f6';
-    ctx.fillRect(0, 0, width, height);
-    
-    ctx.fillStyle = '#d1d5db';
-    ctx.fillRect(0, 0, width, height);
-    
-    const pieceWidth = width * 0.15;
-    const pieceHeight = height * 0.8;
-    const pieceX = width * (targetPosition / 100) - (pieceWidth / 2);
-    const pieceY = height * 0.1;
-    
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(pieceX, pieceY, pieceWidth, pieceHeight);
-    
-    ctx.strokeStyle = '#9ca3af';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(0, 0, width, height);
-  };
-
-  const updatePuzzlePiecePosition = (value: number) => {
-    if (!puzzlePieceRef.current || !canvasRef.current) return;
-    
-    const canvasWidth = canvasRef.current.width;
-    const pieceWidth = canvasWidth * 0.15;
-    const offsetX = (value / 100) * canvasWidth - (pieceWidth / 2);
-    
-    puzzlePieceRef.current.style.left = `${offsetX}px`;
-  };
-
-  const handleSliderChange = (value: number[]) => {
-    const position = value[0];
-    setSliderValue(position);
-    updatePuzzlePiecePosition(position);
+  const generateCaptcha = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+    let result = '';
+    for (let i = 0; i < 6; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setCaptchaText(result);
+    setUserInput("");
   };
 
   const handleVerify = async () => {
@@ -121,9 +79,7 @@ const PuzzleVerification = ({ onVerified }: { onVerified: () => void }) => {
 
     setError("");
     
-    const difference = Math.abs(sliderValue - targetPosition);
-    
-    if (difference <= 3) {
+    if (userInput.toLowerCase() === captchaText.toLowerCase()) {
       setLoading(true);
       const success = await setVerified();
       
@@ -147,9 +103,10 @@ const PuzzleVerification = ({ onVerified }: { onVerified: () => void }) => {
       setError("Verification failed. Please try again in 60 seconds.");
       toast({
         title: "Verification failed",
-        description: "The puzzle piece wasn't placed correctly. Please try again after the cooldown period.",
+        description: "The CAPTCHA code was incorrect. Please try again after the cooldown period.",
         variant: "destructive",
       });
+      generateCaptcha();
     }
   };
 
@@ -159,36 +116,61 @@ const PuzzleVerification = ({ onVerified }: { onVerified: () => void }) => {
         <LoveBugLogo />
         <CardTitle className="text-3xl font-bold text-red-500">Are you a robot?</CardTitle>
         <p className="text-muted-foreground">
-          Slide the puzzle piece into the empty space to verify you're human.
+          Enter the text shown below to verify you're human.
         </p>
       </CardHeader>
 
       <CardContent className="space-y-6 pt-6">
-        <div className="relative w-full h-[150px] bg-gray-100 rounded-md overflow-hidden">
-          <canvas ref={canvasRef} width="300" height="150" className="w-full h-full" />
-          <div 
-            ref={puzzlePieceRef} 
-            className="absolute top-[15px] bg-pink-500 rounded-sm transition-all duration-100"
-            style={{ 
-              width: '15%', 
-              height: '80%', 
-              left: '0px'
-            }}
-          />
+        <div className="flex justify-center">
+          <div className="bg-gray-100 p-4 rounded-md relative">
+            <div className="select-none text-xl font-bold tracking-wider text-gray-700 italic" 
+                 style={{ 
+                   fontFamily: 'monospace', 
+                   letterSpacing: '0.25em',
+                   transform: 'skew(-10deg, 5deg)',
+                   textShadow: '2px 2px 4px rgba(0,0,0,0.2)'
+                 }}>
+              {captchaText}
+            </div>
+            {/* Noise lines */}
+            <div className="absolute inset-0 overflow-hidden opacity-30 pointer-events-none">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="absolute bg-gray-500"
+                  style={{
+                    height: '1px',
+                    width: '100%',
+                    top: `${Math.random() * 100}%`,
+                    transform: `rotate(${Math.random() * 20 - 10}deg)`
+                  }}
+                />
+              ))}
+            </div>
+          </div>
         </div>
-
+        
         <div className="space-y-2">
-          <p className="text-sm text-muted-foreground">Slide to position the puzzle piece:</p>
-          <Slider 
-            value={[sliderValue]} 
-            onValueChange={handleSliderChange} 
-            max={100} 
-            step={1}
+          <Input
+            type="text"
+            placeholder="Enter the text above"
+            value={userInput}
+            onChange={(e) => setUserInput(e.target.value)}
             disabled={loading || cooldownRemaining > 0}
+            className="text-center"
           />
         </div>
 
-        {error && <p className="text-red-500 text-sm">{error}</p>}
+        <div className="flex justify-center">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={generateCaptcha}
+            disabled={loading || cooldownRemaining > 0}
+          >
+            New Code
+          </Button>
+        </div>
+
+        {error && <p className="text-red-500 text-sm text-center">{error}</p>}
         
         {cooldownRemaining > 0 && (
           <div className="text-center text-amber-600">
@@ -201,7 +183,7 @@ const PuzzleVerification = ({ onVerified }: { onVerified: () => void }) => {
         <Button
           onClick={handleVerify}
           className="w-full bg-gradient-to-r from-pink-400 to-pink-500 hover:from-pink-500 hover:to-pink-600"
-          disabled={loading || cooldownRemaining > 0}
+          disabled={loading || cooldownRemaining > 0 || !userInput}
         >
           {loading ? "Verifying..." : "Verify"}
         </Button>
@@ -370,7 +352,7 @@ const Auth = () => {
   if (showRobotVerification) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gradient-to-b from-white to-pink-50">
-        <PuzzleVerification onVerified={handleRobotVerificationComplete} />
+        <SimpleCaptcha onVerified={handleRobotVerificationComplete} />
       </div>
     );
   }
