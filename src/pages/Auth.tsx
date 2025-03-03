@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -62,9 +63,10 @@ const SimpleCaptcha = ({ onVerified }: { onVerified: () => void }) => {
   }, [lastAttemptTime]);
 
   const generateCaptcha = () => {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+    // Use only easily distinguishable characters
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let result = '';
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 5; i++) { // Shorter code (5 chars instead of 6)
       result += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     setCaptchaText(result);
@@ -79,23 +81,34 @@ const SimpleCaptcha = ({ onVerified }: { onVerified: () => void }) => {
 
     setError("");
     
-    if (userInput.toLowerCase() === captchaText.toLowerCase()) {
+    // Make verification case-insensitive for better user experience
+    if (userInput.toUpperCase() === captchaText) {
       setLoading(true);
-      const success = await setVerified();
-      
-      if (success) {
+      try {
+        const success = await setVerified();
+        
+        if (success) {
+          toast({
+            title: "Verification successful",
+            description: "You've proven you're not a robot!",
+            className: "bg-gradient-to-r from-pink-400 to-pink-500 text-white border-none",
+          });
+          onVerified();
+        } else {
+          toast({
+            title: "Verification failed",
+            description: "There was an error saving your verification status.",
+            variant: "destructive",
+          });
+        }
+      } catch (error) {
+        console.error("Error during verification:", error);
         toast({
-          title: "Verification successful",
-          description: "You've proven you're not a robot!",
-          className: "bg-gradient-to-r from-pink-400 to-pink-500 text-white border-none",
-        });
-        onVerified();
-      } else {
-        toast({
-          title: "Verification failed",
-          description: "There was an error saving your verification status.",
+          title: "Verification error",
+          description: "An unexpected error occurred. Please try again.",
           variant: "destructive",
         });
+      } finally {
         setLoading(false);
       }
     } else {
@@ -122,25 +135,24 @@ const SimpleCaptcha = ({ onVerified }: { onVerified: () => void }) => {
 
       <CardContent className="space-y-6 pt-6">
         <div className="flex justify-center">
-          <div className="bg-gray-100 p-4 rounded-md relative">
-            <div className="select-none text-xl font-bold tracking-wider text-gray-700 italic" 
+          <div className="bg-gray-100 p-6 rounded-md relative">
+            <div className="select-none text-2xl font-bold text-gray-800" 
                  style={{ 
                    fontFamily: 'monospace', 
-                   letterSpacing: '0.25em',
-                   transform: 'skew(-10deg, 5deg)',
-                   textShadow: '2px 2px 4px rgba(0,0,0,0.2)'
+                   letterSpacing: '0.5em',
+                   padding: '0.5em'
                  }}>
               {captchaText}
             </div>
-            {/* Noise lines */}
-            <div className="absolute inset-0 overflow-hidden opacity-30 pointer-events-none">
-              {Array.from({ length: 5 }).map((_, i) => (
+            {/* Reduced noise for better readability */}
+            <div className="absolute inset-0 overflow-hidden opacity-20 pointer-events-none">
+              {Array.from({ length: 3 }).map((_, i) => (
                 <div key={i} className="absolute bg-gray-500"
                   style={{
                     height: '1px',
                     width: '100%',
-                    top: `${Math.random() * 100}%`,
-                    transform: `rotate(${Math.random() * 20 - 10}deg)`
+                    top: `${20 + Math.random() * 60}%`,
+                    transform: `rotate(${Math.random() * 10 - 5}deg)`
                   }}
                 />
               ))}
@@ -151,7 +163,7 @@ const SimpleCaptcha = ({ onVerified }: { onVerified: () => void }) => {
         <div className="space-y-2">
           <Input
             type="text"
-            placeholder="Enter the text above"
+            placeholder="Enter the text above (case insensitive)"
             value={userInput}
             onChange={(e) => setUserInput(e.target.value)}
             disabled={loading || cooldownRemaining > 0}
